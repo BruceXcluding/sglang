@@ -404,7 +404,6 @@ def _decode_grouped_att_m_fwd(
 ):
     Lk = k_buffer.shape[-1]
     Lv = v_buffer.shape[-1]
-    print(f"Lk = {Lk}"}
 
     BLOCK = 16 if Lk >= 576 else 32
 
