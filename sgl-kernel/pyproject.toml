@@ -22,9 +22,6 @@ dependencies = [
 "Homepage" = "https://github.com/sgl-project/sglang"
 "Bug Tracker" = "https://github.com/sgl-project/sglang/issues"
 
-[tool.setuptools]
-package-dir = {"sgl_kernel" = "src/sgl-kernel"}
-packages = ["sgl_kernel", "sgl_kernel.ops", "sgl_kernel.csrc"]
 
 [tool.wheel]
 exclude = [
