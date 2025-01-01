@@ -1,4 +1,4 @@
-#TODO (amd) add customrized kernel
+# TODO (amd) add customrized kernel
 from sgl_kernel.ops._kernels import moe_align_block_size as _moe_align_block_size
 
 

@@ -1,18 +1,21 @@
 from pathlib import Path
 
-from setuptools import setup
 import torch
-from torch.utils.cpp_extension import BuildExtension, CUDAExtension, IS_HIP_EXTENSION
+from setuptools import setup
+from torch.utils.cpp_extension import IS_HIP_EXTENSION, BuildExtension, CUDAExtension
 
 root = Path(__file__).parent.resolve()
+
 
 def is_cuda() -> bool:
     """Return whether it is CUDA on the NVIDIA CUDA platform."""
     return torch.cuda.is_available() and torch.version.cuda
 
+
 def is_hip() -> bool:
-     """Return whether it is HIP on the AMD ROCm platform."""
-     return torch.cuda.is_available() and torch.version.hip
+    """Return whether it is HIP on the AMD ROCm platform."""
+    return torch.cuda.is_available() and torch.version.hip
+
 
 def get_version():
     with open(root / "pyproject.toml") as f:
@@ -84,7 +87,7 @@ if is_cuda():
         install_requires=["torch"],
     )
 elif is_hip():
-    ext_modules=[
+    ext_modules = [
         CUDAExtension(
             name="sgl_kernel.ops._kernels",
             sources=[
@@ -114,7 +117,9 @@ elif is_hip():
         install_requires=["torch"],
     )
 else:
-    raise RuntimeError("Neither CUDA nor ROCm environment detected. Set either CUDA_HOME or ROCM_PATH")
+    raise RuntimeError(
+        "Neither CUDA nor ROCm environment detected. Set either CUDA_HOME or ROCM_PATH"
+    )
 
 
 update_wheel_platform_tag()
