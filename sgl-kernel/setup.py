@@ -2,7 +2,7 @@ from pathlib import Path
 
 import torch
 from setuptools import setup
-from torch.utils.cpp_extension import IS_HIP_EXTENSION, BuildExtension, CUDAExtension
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension
 
 root = Path(__file__).parent.resolve()
 
