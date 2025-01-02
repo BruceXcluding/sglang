@@ -27,7 +27,9 @@ import signal
 import threading
 import time
 from http import HTTPStatus
-from typing import AsyncIterator, Dict, List, Optional, Union
+from typing import AsyncIterator, Dict, List, Optional, Tuple, Union
+
+import torch
 
 # Fix a bug of Python threading
 setattr(threading, "_register_atexit", lambda *args, **kwargs: None)
@@ -78,12 +80,12 @@ from sglang.srt.openai_api.adapter import (
 from sglang.srt.openai_api.protocol import ModelCard, ModelList
 from sglang.srt.server_args import PortArgs, ServerArgs
 from sglang.srt.utils import (
+    MultiprocessingSerializer,
     add_api_key_middleware,
     add_prometheus_middleware,
     assert_pkg_version,
     configure_logger,
     delete_directory,
-    is_hip,
     is_port_available,
     kill_process_tree,
     maybe_set_triton_cache_manager,
@@ -579,9 +581,8 @@ def _set_envs_and_config(server_args: ServerArgs):
     os.environ["NCCL_NVLS_ENABLE"] = "0"
     os.environ["TORCH_NCCL_AVOID_RECORD_STREAMS"] = "1"
     os.environ["CUDA_DEVICE_MAX_CONNECTIONS"] = "4"
-    if not is_hip():
-        if "GLOO_SOCKET_IFNAME" not in os.environ:
-            os.environ["GLOO_SOCKET_IFNAME"] = "eth0"
+    if "GLOO_SOCKET_IFNAME" not in os.environ:
+        os.environ["GLOO_SOCKET_IFNAME"] = "eth0"
 
     # Set prometheus env vars
     if server_args.enable_metrics:
@@ -876,9 +877,11 @@ class Engine:
             tokenizer_manager.update_weights_from_distributed(obj, None)
         )
 
-    def update_weights_from_tensor(self, name, tensor):
+    def update_weights_from_tensor(self, named_tensors: List[Tuple[str, torch.Tensor]]):
         """Update weights from distributed source."""
-        obj = UpdateWeightsFromTensorReqInput(name=name, tensor=tensor)
+        obj = UpdateWeightsFromTensorReqInput(
+            serialized_named_tensors=MultiprocessingSerializer.serialize(named_tensors)
+        )
         loop = asyncio.get_event_loop()
         return loop.run_until_complete(
             tokenizer_manager.update_weights_from_tensor(obj, None)
