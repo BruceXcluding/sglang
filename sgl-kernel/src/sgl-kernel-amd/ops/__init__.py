@@ -1,6 +1,6 @@
 # TODO (amd) add customrized kernel
 from sgl_kernel.ops._kernels import moe_align_block_size as _moe_align_block_size
-
+from sgl_kernel.ops._kernels import gemm_a8w8 as _gemm_a8w8
 
 def moe_align_block_size(
     topk_ids,
@@ -22,3 +22,6 @@ def moe_align_block_size(
         token_cnts_buffer,
         cumsum_buffer,
     )
+
+def gemm_a8w8(a, b, alpha_row, alpha_col, out):
+    _gemm_a8w8(a, b, alpha_row, alpha_col, out)
