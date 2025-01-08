@@ -100,9 +100,10 @@ elif is_hip():
             name="sgl_kernel.ops._kernels",
             sources=[
                 "src/sgl-kernel/csrc/moe_align_kernel.cu",
-                "src/sgl-kernel-amd/csrc/ck/gemm_a8w8/gemm_a8w8.cu",
+                "src/sgl-kernel-amd/csrc/ck/gemm_a8w8/gemm_a8w8_subblock.cu",
                 "src/sgl-kernel-amd/csrc/sgl_kernel_amd_ops.cu",
-            ]+ glob.glob("src/sgl-kernel-amd/csrc/ck/gemm_a8w8/impl/*.cu"),
+            ],
+            #]+ glob.glob("src/sgl-kernel-amd/csrc/ck/gemm_a8w8/impl/*.cu"), #TODO GEMM TUNING IMPL 
             include_dirs=ck_include_dirs,
             extra_compile_args={
                 "nvcc": hipcc_flags
