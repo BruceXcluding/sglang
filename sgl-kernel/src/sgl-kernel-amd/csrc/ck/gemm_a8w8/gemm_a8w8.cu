@@ -75,8 +75,6 @@ RowwiseKernel rowwise_dispatch(int M, int N, int K) {
 }
 
 
-namespace blade_llm {
-
 torch::Tensor gemm_a8w8(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
@@ -113,5 +111,3 @@ torch::Tensor gemm_a8w8(
     }
     return Y;
 }
-
-} // namespace blade_llm

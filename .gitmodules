@@ -1,3 +1,6 @@
 [submodule "sgl-kernel/3rdparty/cutlass"]
 	path = sgl-kernel/3rdparty/cutlass
 	url = https://github.com/NVIDIA/cutlass.git
+[submodule "sgl-kernel/3rdparty/composable_kernel"]
+	path = sgl-kernel/3rdparty/composable_kernel
+	url = https://github.com/ROCm/composable_kernel.git
