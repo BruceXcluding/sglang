@@ -51,7 +51,7 @@ nvcc_flags = [
 ]
 
 ck = root/ "3rdparty" / "composable_kernel"
-ck_indlude_dirs = [
+ck_include_dirs = [
 	ck.resolve() / "include",
 	root / "src" / "sgl-kernel-amd" / "csrc",
 ]
@@ -102,7 +102,7 @@ elif is_hip():
 		"src/sgl-kernel-amd/csrc/ck/gemm_a8w8/gemm_a8w8.cu",
                 "src/sgl-kernel-amd/csrc/sgl_kernel_amd_ops.cu",
             ],
-	    include_dirs=ck_include_dirs
+	    include_dirs=ck_include_dirs,
             extra_compile_args={
                 "nvcc": hipcc_flags
                 + [
