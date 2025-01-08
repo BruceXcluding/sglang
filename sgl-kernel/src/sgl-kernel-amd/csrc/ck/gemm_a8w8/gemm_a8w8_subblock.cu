@@ -6,8 +6,8 @@ template <typename DEDataType, typename ABDataType>
 SubblockwiseKernel sublbockwise_heuristic_dispatch(int M, int N, int K) {
   // Apply shape heuristics to find a suitable kernel implementation.
   /* TODO: add support for DeepSeek-v3 Tuning Config  */ 
-  // return a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v3<DEDataType, ABDataType>;
-  return None ; 
+  // return a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v3<DEDataType, ABDataType>; 
+  return nullptr;
 }
 
 // Helper function to return the next largest power of 2
@@ -71,7 +71,7 @@ torch::Tensor gemm_a8w8_subblock(
     // }
     
     // TODO: currently only support 1 instance 
-    gemm_a8w8_subblockwise_impl(XQ, WQ, x_scale, w_scale, Y);
-    return Y ; 
+    gemm_a8w8_subblockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
+    return Y ;
 }
 

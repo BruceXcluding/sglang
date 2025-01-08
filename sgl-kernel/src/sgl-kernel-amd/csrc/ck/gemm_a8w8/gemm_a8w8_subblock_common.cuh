@@ -43,14 +43,14 @@ using F32 = float;
 using Row = ck::tensor_layout::gemm::RowMajor;
 using Col = ck::tensor_layout::gemm::ColumnMajor;
 
-using A0DataType       = FP8;
+using A0DataType       = F8;
 using A1DataType       = F32;
-using B0DataType       = FP8;
+using B0DataType       = F8;
 using B1DataType       = F32;
 using AccDataType      = F32;
 using CShuffleDataType = F32;
 using DsDataType       = ck::Tuple<>;
-using EDataType        = BF16;
+using EDataType        = B16;
 
 using A0Layout = Row;
 using B0Layout = Col;
@@ -71,7 +71,7 @@ static constexpr ck::index_t Scale_Block_M = 1;
 static constexpr ck::index_t Scale_Block_N = 128;
 static constexpr ck::index_t Scale_Block_K = 128;
 
-using DeviceGemmInstance_ = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
+using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
     // clang-format off
          <Row, Col, DsLayout, ELayout,
           A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType, 
@@ -84,9 +84,9 @@ using DeviceGemmInstance_ = ck::tensor_operation::device::DeviceGemmMultiD_ABSca
           S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
           S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
           1,    2,  S<1, 32, 1, 8>,  S<8>,
-          ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3, FP8>;
+          ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3, F8>;
 
-template <typename DeviceGemmInstance=DeviceGemmInstance_, ck::index_t SplitK=1>
+template <typename DeviceGemmInstance, ck::index_t SplitK=1>
 __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
@@ -112,8 +112,8 @@ __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     auto b_element_op = BElementOp{};
     auto cde_element_op = CDEElementOp{};
 
-    constexpr ck::index_t NumDTensor = DeviceGemmInstance::NumDTensor;
-    auto argument  = device_op.MakeArgument(XQ.data_ptr(),
+    constexpr ck::index_t NumDTensor = DsDataType::Size();
+    auto argument  = device_gemm.MakeArgument(XQ.data_ptr(),
                         WQ.data_ptr(),
                         std::array<const void*, NumDTensor>{},
                         Y.data_ptr(),
