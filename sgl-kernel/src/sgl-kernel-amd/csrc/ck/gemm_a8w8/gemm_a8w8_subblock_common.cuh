@@ -71,13 +71,13 @@ static constexpr ck::index_t Scale_Block_M = 1;
 static constexpr ck::index_t Scale_Block_N = 128;
 static constexpr ck::index_t Scale_Block_K = 128;
 
-using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
+using DeviceGemmInstance_ = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
     // clang-format off
          <Row, Col, DsLayout, ELayout,
           A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType, 
           AElementOp,  BElementOp, CDEElementOp, GemmSpec,
-          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,
-          128, 128,
+          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,  // BlockSize, ScaleBlockM, ScaleBlockN, ScaleBlockK 
+          128, 128,     // MPerBlock, NPerBlock, KPerBlock 
           128, 16, 16,
           16,   16,
           4,    4,
@@ -86,7 +86,7 @@ using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScal
           1,    2,  S<1, 32, 1, 8>,  S<8>,
           ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3, FP8>;
 
-template <typename DeviceGemmInstance, ck::index_t SplitK=1>
+template <typename DeviceGemmInstance=DeviceGemmInstance_, ck::index_t SplitK=1>
 __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     torch::Tensor& XQ,
     torch::Tensor& WQ,

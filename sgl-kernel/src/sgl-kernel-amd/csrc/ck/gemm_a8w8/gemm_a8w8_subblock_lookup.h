@@ -35,9 +35,7 @@ public:
    }
 private:
   const SubblockwiseKernelMap table_ = {
-      /* TODO: DeepSeek-v3 TP8 */
-      {{16, 4608, 3584},
-      a8w8_rowwise_256x16x64x512_16x16_1x1_32x8x1_32x8x1_1x16x1x16_4x4x1_1x1_intrawave_v3<DEDataType, ABDataType>},
+      /* TODO: adding DeepSeek-v3 TP8 instance */
    };
 };
 

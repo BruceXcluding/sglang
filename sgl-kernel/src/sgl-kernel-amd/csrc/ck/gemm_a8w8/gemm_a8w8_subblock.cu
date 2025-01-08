@@ -1,9 +1,13 @@
+#include "gemm_a8w8_subblock_common.cuh"
+#include "gemm_a8w8_subblock_manifest.h"
+#include "gemm_a8w8_subblock_lookup.h"
 
 template <typename DEDataType, typename ABDataType>
 SubblockwiseKernel sublbockwise_heuristic_dispatch(int M, int N, int K) {
   // Apply shape heuristics to find a suitable kernel implementation.
-  // TODO 
-  return a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v2<DEDataType, ABDataType>;
+  /* TODO: add support for DeepSeek-v3 Tuning Config  */ 
+  // return a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v3<DEDataType, ABDataType>;
+  return None ; 
 }
 
 // Helper function to return the next largest power of 2
@@ -48,25 +52,26 @@ torch::Tensor gemm_a8w8_subblock(
     TORCH_CHECK(x_scale.dtype() == Y.dtype() && w_scale.dtype() == Y.dtype(),
                 "Scales and output should have the same dtype!");
 
-    int M = XQ.size(0);
-    int N = WQ.size(0);
-    int K = XQ.size(1);
-
-    if (Y.dtype() == at::ScalarType::Half) {
-        if(XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
-            subblockwise_dispatch<F16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
-        }else {
-            TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
-        }
-    } 
-    else if (Y.dtype() == at::ScalarType::BFloat16) {
-        if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
-                subblockwise_dispatch<B16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
-            } else {
-                TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
-            }
-    }
-
+    // int M = XQ.size(0);
+    // int N = WQ.size(0);
+    // int K = XQ.size(1);
+    // if (Y.dtype() == at::ScalarType::Half) {
+    //     if(XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
+    //         subblockwise_dispatch<F16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
+    //     }else {
+    //         TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
+    //     }
+    // } 
+    // else if (Y.dtype() == at::ScalarType::BFloat16) {
+    //     if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
+    //             subblockwise_dispatch<B16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
+    //         } else {
+    //             TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
+    //         }
+    // }
+    
+    // TODO: currently only support 1 instance 
+    gemm_a8w8_subblockwise_impl(XQ, WQ, x_scale, w_scale, Y);
     return Y ; 
 }
 
