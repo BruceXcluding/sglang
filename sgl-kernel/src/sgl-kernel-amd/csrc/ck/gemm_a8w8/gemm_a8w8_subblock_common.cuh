@@ -35,8 +35,6 @@
 template <ck::index_t... Is>
 using S = ck::Sequence<Is...>;
 
-using I8  = int8_t;
-using I32 = int;
 using F16 = ck::half_t;
 using B16 = ck::bhalf_t;
 using F8 = ck::f8_t;
@@ -45,129 +43,51 @@ using F32 = float;
 using Row = ck::tensor_layout::gemm::RowMajor;
 using Col = ck::tensor_layout::gemm::ColumnMajor;
 
-using ALayout = Row;
-using BLayout = Col;
+using A0DataType       = FP8;
+using A1DataType       = F32;
+using B0DataType       = FP8;
+using B1DataType       = F32;
+using AccDataType      = F32;
+using CShuffleDataType = F32;
+using DsDataType       = ck::Tuple<>;
+using EDataType        = BF16;
+
+using A0Layout = Row;
+using B0Layout = Col;
 using D0Layout = Row;
 using D1Layout = Col;
-using DsLayout = ck::Tuple<D0Layout, D1Layout>;
-using ELayout = Row;
+using DsLayout = ck::Tuple<>;
+using ELayout  = Row;
 
 using PassThrough = ck::tensor_operation::element_wise::PassThrough;
 
 using AElementOp = PassThrough;
 using BElementOp = PassThrough;
+using CDEElementOp = PassThrough;
 
-struct RowwiseScale
-{
-    template <typename E, typename C, typename D0, typename D1>
-    __host__ __device__ __forceinline__ constexpr void
-    operator()(E& e, const C& c, const D0& d0, const D1& d1) const
-    {
-        static_assert(std::is_same_v<E, F16> || std::is_same_v<E, B16>);
-        static_assert(std::is_same_v<D0, D1> && std::is_same_v<D0, E>);
-        static_assert(std::is_same_v<C, I32> || std::is_same_v<C, F32>);
-        const F32 x0_f =
-            ck::type_convert<F32>(c) * ck::type_convert<F32>(d0) * ck::type_convert<F32>(d1);
+static constexpr auto GemmSpec = ck::tensor_operation::device::GemmSpecialization::MNKPadding;
 
-        e = ck::type_convert<E>(x0_f);
-    }
-};
+static constexpr ck::index_t Scale_Block_M = 1;
+static constexpr ck::index_t Scale_Block_N = 128;
+static constexpr ck::index_t Scale_Block_K = 128;
 
-using CDEElementOp = RowwiseScale;
+using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
+    // clang-format off
+         <Row, Col, DsLayout, ELayout,
+          A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType, 
+          AElementOp,  BElementOp, CDEElementOp, GemmSpec,
+          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,
+          128, 128,
+          128, 16, 16,
+          16,   16,
+          4,    4,
+          S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
+          S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
+          1,    2,  S<1, 32, 1, 8>,  S<8>,
+          ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3, FP8>;
 
-template <typename ABDataType>
-struct DTypeHelper;
-
-template <>
-struct DTypeHelper<I8> {
-    using Acc = I32;
-    using CShuffle = I32;
-    using Compute = I8;
-};
-
-template <>
-struct DTypeHelper<F8> {
-    using Acc = F32;
-    using CShuffle = F32;
-    using Compute = F8;
-};
-
-template <typename DEDataType>
-using DsDataType = ck::Tuple<DEDataType, DEDataType>;
-
-template <
-    typename DEDataType,
-    typename ABDataType,
-    int BLOCK_SIZE,
-    int MBLOCK,
-    int NBLOCK,
-    int KBLOCK,
-    int WAVE_TILE_M,
-    int WAVE_TILE_N,
-    int WAVE_MAP_M,
-    int WAVE_MAP_N,
-    typename ABLOCK_TRANSFER,
-    typename BBLOCK_TRANSFER,
-    typename CBLOCK_TRANSFER,
-    typename CBLOCK_SPV,
-    int CSHUFFLE_MX_PER_WAVE_PERSHUFFLE,
-    int CSHUFFLE_NX_PER_WAVE_PERSHUFFLE,
-    ck::BlockGemmPipelineScheduler LOOP_SCHED,
-    ck::BlockGemmPipelineVersion PIPELINE_VERSION,
-    auto GEMM_SPEC =
-        ck::tensor_operation::device::GemmSpecialization::Default>
-    using DeviceGemmHelper =
-    ck::tensor_operation::device::DeviceGemmMultiD_Xdl_CShuffle_V3<
-        ALayout,
-        BLayout,
-        DsLayout,
-        ELayout,
-        ABDataType,
-        ABDataType,
-        DsDataType<DEDataType>,
-        DEDataType,
-        typename DTypeHelper<ABDataType>::Acc,
-        typename DTypeHelper<ABDataType>::CShuffle,
-        AElementOp,
-        BElementOp,
-        CDEElementOp,
-        GEMM_SPEC,
-        BLOCK_SIZE, // Block Size
-        MBLOCK, // M per Block
-        NBLOCK, // N per Block
-        KBLOCK, // K per Block
-        16, // AK1
-        16, // BK1
-        WAVE_TILE_M, // M per Xdl
-        WAVE_TILE_N, // N per Xdl
-        WAVE_MAP_M, // Mxdl per Wave
-        WAVE_MAP_N, // Nxdl per Wave
-        ABLOCK_TRANSFER,
-        S<1, 0, 2>,
-        S<1, 0, 2>,
-        2,
-        16,
-        16,
-        0,
-        BBLOCK_TRANSFER,
-        S<1, 0, 2>,
-        S<1, 0, 2>,
-        2,
-        16,
-        16,
-        0,
-        CSHUFFLE_MX_PER_WAVE_PERSHUFFLE,
-        CSHUFFLE_NX_PER_WAVE_PERSHUFFLE,
-        CBLOCK_TRANSFER,
-        CBLOCK_SPV,
-        LOOP_SCHED,
-        PIPELINE_VERSION,
-        typename DTypeHelper<ABDataType>::Compute>;
-
-
-template <typename DeviceGemmInstance,
-          ck::index_t SplitK=1>
-__forceinline__ torch::Tensor gemm_a8w8_rowwise_impl(
+template <typename DeviceGemmInstance, ck::index_t SplitK=1>
+__forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
@@ -181,6 +101,8 @@ __forceinline__ torch::Tensor gemm_a8w8_rowwise_impl(
     int StrideA = XQ.stride(-2);
     int StrideB = WQ.stride(-2);
     int StrideE = N;
+    int Scale_Stride_AM = (K + Scale_Block_K - 1) / Scale_Block_K;
+    int Scale_Stride_BN = (K + Scale_Block_K - 1) / Scale_Block_K;
 
     auto device_gemm = DeviceGemmInstance{};
     auto invoker = device_gemm.MakeInvoker();
@@ -191,26 +113,23 @@ __forceinline__ torch::Tensor gemm_a8w8_rowwise_impl(
     auto cde_element_op = CDEElementOp{};
 
     constexpr ck::index_t NumDTensor = DeviceGemmInstance::NumDTensor;
+    auto argument  = device_op.MakeArgument(XQ.data_ptr(),
+                        WQ.data_ptr(),
+                        std::array<const void*, NumDTensor>{},
+                        Y.data_ptr(),
+                        M,
+                        N,
+                        K,
+                        StrideA,
+                        StrideB,
+                        std::array<ck::index_t, NumDTensor>{},
+                        StrideE,
+                        x_scale.data_ptr(),
+                        w_scale.data_ptr(),
+                        a_element_op,
+                        b_element_op,
+                        cde_element_op);
     
-    auto argument = device_gemm.MakeArgument(
-        XQ.data_ptr(),
-        WQ.data_ptr(),
-        std::array<const void*, NumDTensor>{
-            w_scale.data_ptr(),
-            x_scale.data_ptr()},
-        Y.data_ptr(),
-        M,
-        N,
-        K,
-        StrideA,
-        StrideB,
-        std::array<ck::index_t, NumDTensor>{0, 0},
-        StrideE,
-        SplitK,
-        a_element_op,
-        b_element_op,
-        cde_element_op
-    );
     TORCH_CHECK(device_gemm.IsSupportedArgument(argument), "This GEMM is not supported!");
     
     invoker.Run(argument, StreamConfig{at::cuda::getCurrentCUDAStream().stream()});
