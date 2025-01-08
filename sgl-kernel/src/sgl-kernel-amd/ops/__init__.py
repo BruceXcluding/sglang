@@ -23,5 +23,10 @@ def moe_align_block_size(
         cumsum_buffer,
     )
 
-def gemm_a8w8(a, b, alpha_row, alpha_col, out):
-    _gemm_a8w8(a, b, alpha_row, alpha_col, out)
+def gemm_a8w8(
+    XQ,
+    WQ,
+    x_scale,
+    w_scale,
+    Y):
+    _gemm_a8w8(XQ, WQ, x_scale, w_scale, Y)
