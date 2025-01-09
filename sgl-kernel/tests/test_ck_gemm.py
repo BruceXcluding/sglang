@@ -47,8 +47,14 @@ class TestCKGemm(unittest.TestCase):
                     b = torch.randn((n, k), dtype=torch.float32).cuda()
                     a_8 = a.to(torch.float8_e4m3fnuz).cuda()
                     b_8 = b.to(torch.float8_e4m3fnuz).cuda()
-                    alpha_row = torch.rand([m, 1], dtype=torch.half).cuda() / 1000
-                    alpha_col = torch.rand([1, n], dtype=torch.half).cuda() / 1000
+                    block_n = 128
+                    block_k = 128
+                    ntile = (n + block_n - 1) // block_n
+                    ktile = (n + block_k - 1) // block_k
+                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_col = (
+                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                    )
 
                     quantiles = [0.5, 0.2, 0.8]
                     out_triton = torch.empty(
@@ -59,8 +65,14 @@ class TestCKGemm(unittest.TestCase):
                 else:
                     a = torch.randint(-128, 127, (m, k), dtype=torch.int8).cuda()
                     b = torch.randint(-128, 127, (n, k), dtype=torch.int8).cuda()
-                    alpha_row = torch.rand([m, 1], dtype=torch.half).cuda()
-                    alpha_col = torch.rand([1, n], dtype=torch.half).cuda()
+                    block_n = 128
+                    block_k = 128
+                    ntile = (n + block_n - 1) // block_n
+                    ktile = (n + block_k - 1) // block_k
+                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_col = (
+                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                    )
                     quantiles = [0.5, 0.2, 0.8]
                     out_triton = torch.empty(
                         [a.shape[0], b.shape[0]], dtype=torch.half, device=a.device
@@ -108,8 +120,14 @@ class TestCKGemm(unittest.TestCase):
                     b = torch.randn((n, k), dtype=torch.float32).cuda()
                     a_8 = a.to(torch.float8_e4m3fnuz).cuda()
                     b_8 = b.to(torch.float8_e4m3fnuz).cuda()
-                    alpha_row = torch.rand([m, 1], dtype=torch.half).cuda() / 1000
-                    alpha_col = torch.rand([1, n], dtype=torch.half).cuda() / 1000
+                    block_n = 128
+                    block_k = 128
+                    ntile = (n + block_n - 1) // block_n
+                    ktile = (n + block_k - 1) // block_k
+                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_col = (
+                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                    )
 
                     ck_res = torch.zeros(
                         [a_8.shape[0], b_8.shape[0]], dtype=torch.half, device=a.device
@@ -126,8 +144,14 @@ class TestCKGemm(unittest.TestCase):
                 else:
                     a = torch.randint(-5, 5, (m, k), dtype=torch.int8).cuda()
                     b = torch.randint(0, 5, (n, k), dtype=torch.int8).cuda()
-                    alpha_row = torch.rand([m, 1], dtype=torch.half).cuda() / 1000
-                    alpha_col = torch.rand([1, n], dtype=torch.half).cuda() / 1000
+                    block_n = 128
+                    block_k = 128
+                    ntile = (n + block_n - 1) // block_n
+                    ktile = (n + block_k - 1) // block_k
+                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_col = (
+                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                    )
 
                     ck_res = torch.zeros(
                         [a.shape[0], b.shape[0]], dtype=torch.half, device=a.device
