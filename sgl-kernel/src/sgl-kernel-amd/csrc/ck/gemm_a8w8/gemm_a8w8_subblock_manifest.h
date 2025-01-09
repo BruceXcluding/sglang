@@ -8,6 +8,6 @@
 
 #include <torch/extension.h>
 
-// TODO 
+// TODO
 
 #endif // USE_ROCM

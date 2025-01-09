@@ -74,10 +74,10 @@ static constexpr ck::index_t Scale_Block_K = 128;
 using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
     // clang-format off
          <Row, Col, DsLayout, ELayout,
-          A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType, 
+          A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType,
           AElementOp,  BElementOp, CDEElementOp, GemmSpec,
-          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,  // BlockSize, ScaleBlockM, ScaleBlockN, ScaleBlockK 
-          128, 128,     // MPerBlock, NPerBlock, KPerBlock 
+          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,  // BlockSize, ScaleBlockM, ScaleBlockN, ScaleBlockK
+          128, 128,     // MPerBlock, NPerBlock, KPerBlock
           128, 16, 16,
           16,   16,
           4,    4,
@@ -129,9 +129,9 @@ __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
                         a_element_op,
                         b_element_op,
                         cde_element_op);
-    
+
     TORCH_CHECK(device_gemm.IsSupportedArgument(argument), "This GEMM is not supported!");
-    
+
     invoker.Run(argument, StreamConfig{at::cuda::getCurrentCUDAStream().stream()});
     return Y;
 }

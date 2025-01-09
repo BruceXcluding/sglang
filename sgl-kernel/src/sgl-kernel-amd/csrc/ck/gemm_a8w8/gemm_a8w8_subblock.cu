@@ -5,8 +5,8 @@
 template <typename DEDataType, typename ABDataType>
 SubblockwiseKernel sublbockwise_heuristic_dispatch(int M, int N, int K) {
   // Apply shape heuristics to find a suitable kernel implementation.
-  /* TODO: add support for DeepSeek-v3 Tuning Config  */ 
-  // return a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v3<DEDataType, ABDataType>; 
+  /* TODO: add support for DeepSeek-v3 Tuning Config  */
+  // return a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v3<DEDataType, ABDataType>;
   return nullptr;
 }
 
@@ -61,7 +61,7 @@ torch::Tensor gemm_a8w8_subblock(
     //     }else {
     //         TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
     //     }
-    // } 
+    // }
     // else if (Y.dtype() == at::ScalarType::BFloat16) {
     //     if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
     //             subblockwise_dispatch<B16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
@@ -69,9 +69,8 @@ torch::Tensor gemm_a8w8_subblock(
     //             TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
     //         }
     // }
-    
-    // TODO: currently only support 1 instance 
+
+    // TODO: currently only support 1 instance
     gemm_a8w8_subblockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
     return Y ;
 }
-
