@@ -16,8 +16,12 @@
 # https://github.com/vllm-project/vllm/blob/fb6af8bc086328ca6659e72d11ffd4309ce4de22/vllm/model_executor/models/deepseek_v2.py
 """Inference-only DeepseekV2 model."""
 
-from typing import Any, Dict, Iterable, Optional, Tuple
 
+PROFILING = 1 
+if PROFILING : 
+    import torch.profiler as tprof
+
+from typing import Any, Dict, Iterable, Optional, Tuple
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -97,7 +101,6 @@ class DeepseekV2MLP(nn.Module):
         x, _ = self.down_proj(x)
         return x
 
-
 class MoEGate(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -114,7 +117,6 @@ class MoEGate(nn.Module):
     def forward(self, hidden_states):
         logits = F.linear(hidden_states, self.weight, None)
         return logits
-
 
 class DeepseekV2MoE(nn.Module):
 
@@ -170,13 +172,29 @@ class DeepseekV2MoE(nn.Module):
         num_tokens, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_dim)
         if self.n_shared_experts is not None:
-            shared_output = self.shared_experts(hidden_states)
+            if PROFILING:
+                with tprof.record_function("sharE"):
+                    shared_output = self.shared_experts(hidden_states)
+            else:
+                shared_output = self.shared_experts(hidden_states)
         # router_logits: (num_tokens, n_experts)
-        router_logits = self.gate(hidden_states)
-        final_hidden_states = (
-            self.experts(hidden_states=hidden_states, router_logits=router_logits)
-            * self.routed_scaling_factor
-        )
+        if PROFILING:
+            with tprof.record_function("gate"):
+                router_logits = self.gate(hidden_states)
+        else:
+            router_logits = self.gate(hidden_states)
+        
+        if PROFILING:
+            with tprof.record_function("experts"):
+                final_hidden_states = (
+                    self.experts(hidden_states=hidden_states, router_logits=router_logits)
+                    * self.routed_scaling_factor
+                    )
+        else: 
+            final_hidden_states = (
+                self.experts(hidden_states=hidden_states, router_logits=router_logits)
+                * self.routed_scaling_factor
+                )
         if shared_output is not None:
             final_hidden_states = final_hidden_states + shared_output
         if self.tp_size > 1:
@@ -294,13 +312,9 @@ class DeepseekV2Attention(nn.Module):
             num_kv_heads=self.num_local_heads,
             layer_id=layer_id,
         )
+        
 
-    def forward(
-        self,
-        positions: torch.Tensor,
-        hidden_states: torch.Tensor,
-        forward_batch: ForwardBatch,
-    ) -> torch.Tensor:
+    def _q_proj_pass(self, hidden_states):
         if self.q_lora_rank is not None:
             q = self.q_a_proj(hidden_states)[0]
             q = self.q_a_layernorm(q)
@@ -309,16 +323,42 @@ class DeepseekV2Attention(nn.Module):
             q = self.q_proj(hidden_states)[0].view(
                 -1, self.num_local_heads, self.qk_head_dim
             )
-        _, q_pe = q.split([self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1)
+        return q
+
+    def _kv_proj_pass(self, hidden_states):
         latent_cache = self.kv_a_proj_with_mqa(hidden_states)[0]
         kv_a, _ = latent_cache.split([self.kv_lora_rank, self.qk_rope_head_dim], dim=-1)
         latent_cache = latent_cache.unsqueeze(1)
         kv_a = self.kv_a_layernorm(kv_a.contiguous())
         kv = self.kv_b_proj(kv_a)[0]
+        return kv, latent_cache 
+
+    def forward(
+        self,
+        positions: torch.Tensor,
+        hidden_states: torch.Tensor,
+        forward_batch: ForwardBatch,
+    ) -> torch.Tensor:
+        
+        if PROFILING: 
+            with tprof.record_function("q_proj"):
+                q = self._q_proj_pass(hidden_states)
+            with tprof.record_function("kv_proj"):
+                kv, latent_cache = self._kv_proj_pass(hidden_states)
+        else:
+            q = self._q_proj_pass(hidden_states)
+            kv, latent_cache = self._kv_proj_pass(hidden_states)
+        _, q_pe = q.split([self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1)   
         kv = kv.view(-1, self.num_local_heads, self.qk_nope_head_dim + self.v_head_dim)
         k_nope, v = kv.split([self.qk_nope_head_dim, self.v_head_dim], dim=-1)
         k_pe = latent_cache[:, :, self.kv_lora_rank :]
-        q_pe, k_pe = self.rotary_emb(positions, q_pe, k_pe)
+
+        if PROFILING:
+            with tprof.record_function("rot_emb"):
+                q_pe, k_pe = self.rotary_emb(positions, q_pe, k_pe)
+        else:
+            q_pe, k_pe = self.rotary_emb(positions, q_pe, k_pe)
+        
         q[..., self.qk_nope_head_dim :] = q_pe
         k = torch.empty_like(q)
         k[..., : self.qk_nope_head_dim] = k_nope
@@ -332,11 +372,21 @@ class DeepseekV2Attention(nn.Module):
         v = torch.nn.functional.pad(v, [0, 256 - self.v_head_dim], value=0).view(
             -1, self.num_local_heads * 256
         )
-        attn_output = self.attn(q, k, v, forward_batch)
+
+        if PROFILING:
+            with tprof.record_function("attn"):
+                attn_output = self.attn(q, k, v, forward_batch)
+        else:
+            attn_output = self.attn(q, k, v, forward_batch)  
         attn_output = attn_output.view(-1, self.num_local_heads, 256)[
             ..., : self.v_head_dim
         ].reshape(-1, self.num_local_heads * self.v_head_dim)
-        output, _ = self.o_proj(attn_output)
+
+        if PROFILING:
+            with tprof.record_function("oproj"):
+                output, _ = self.o_proj(attn_output)
+        else:
+            output, _ = self.o_proj(attn_output)
         return output
 
 
@@ -499,6 +549,67 @@ class DeepseekV2AttentionMLA(nn.Module):
         self.w_vc = None
         self.w_scale = None
 
+    def _q_proj_pass(self, hidden_states):
+        if self.q_lora_rank is not None:
+            q = self.q_a_proj(hidden_states)[0]
+            q = self.q_a_layernorm(q)
+            q = self.q_b_proj(q)[0].view(-1, self.num_local_heads, self.qk_head_dim)
+        else:
+            q = self.q_proj(hidden_states)[0].view(
+                -1, self.num_local_heads, self.qk_head_dim
+            )
+        return q
+
+    def _kv_proj_pass(self, hidden_states):
+        latent_cache = self.kv_a_proj_with_mqa(hidden_states)[0]
+        v_input = latent_cache[..., : self.kv_lora_rank]
+        v_input = self.kv_a_layernorm(v_input.contiguous()).unsqueeze(1)
+        k_input = latent_cache.unsqueeze(1)
+        k_input[..., : self.kv_lora_rank] = v_input
+        k_pe = k_input[..., self.kv_lora_rank :]
+        return  v_input, k_input, k_pe  
+
+    def _bmm1_pass(self, q_nope):
+        if self.w_kc.dtype == torch.float8_e4m3fnuz:
+            # TODO(kernel): add bmm_fp8 for torch.float8_e4m3fnuz
+            q_nope_out = torch.bmm(
+                q_nope.to(torch.bfloat16).transpose(0, 1),
+                self.w_kc.to(torch.bfloat16) * self.w_scale,
+            )
+        elif self.w_kc.dtype == torch.float8_e4m3fn:
+            q_nope_val, q_nope_scale = input_to_float8(
+                q_nope.transpose(0, 1), torch.float8_e4m3fn
+            )
+            q_nope_out = bmm_fp8(
+                q_nope_val, self.w_kc, q_nope_scale, self.w_scale, torch.bfloat16
+            )
+        else:
+            q_nope_out = torch.bmm(q_nope.transpose(0, 1), self.w_kc)
+        return q_nope_out   
+
+
+    def _bmm2_pass(self, attn_output):
+        if self.w_vc.dtype == torch.float8_e4m3fnuz:
+            # TODO(kernel): add bmm_fp8 for torch.float8_e4m3fnuz
+            attn_bmm_output = torch.bmm(
+                attn_output.to(torch.bfloat16).transpose(0, 1),
+                self.w_vc.to(torch.bfloat16) * self.w_scale,
+            )
+        elif self.w_vc.dtype == torch.float8_e4m3fn:
+            attn_output_val, attn_output_scale = input_to_float8(
+                attn_output.transpose(0, 1), torch.float8_e4m3fn
+            )
+            attn_bmm_output = bmm_fp8(
+                attn_output_val,
+                self.w_vc,
+                attn_output_scale,
+                self.w_scale,
+                torch.bfloat16,
+            )
+        else:
+            attn_bmm_output = torch.bmm(attn_output.transpose(0, 1), self.w_vc)    
+        return attn_bmm_output 
+
     def forward(
         self,
         positions: torch.Tensor,
@@ -562,73 +673,60 @@ class DeepseekV2AttentionMLA(nn.Module):
         hidden_states: torch.Tensor,
         forward_batch: ForwardBatch,
     ) -> torch.Tensor:
+        
         q_len = hidden_states.shape[0]
         q_input = hidden_states.new_empty(
             q_len, self.num_local_heads, self.kv_lora_rank + self.qk_rope_head_dim
         )
-        if self.q_lora_rank is not None:
-            q = self.q_a_proj(hidden_states)[0]
-            q = self.q_a_layernorm(q)
-            q = self.q_b_proj(q)[0].view(-1, self.num_local_heads, self.qk_head_dim)
+
+        if PROFILING:
+            with tprof.record_function("q_proj"):
+                q = self._q_proj_pass(hidden_states) 
         else:
-            q = self.q_proj(hidden_states)[0].view(
-                -1, self.num_local_heads, self.qk_head_dim
-            )
+            q = self._q_proj_pass(hidden_states) 
         q_nope, q_pe = q.split([self.qk_nope_head_dim, self.qk_rope_head_dim], dim=-1)
 
-        if self.w_kc.dtype == torch.float8_e4m3fnuz:
-            # TODO(kernel): add bmm_fp8 for torch.float8_e4m3fnuz
-            q_nope_out = torch.bmm(
-                q_nope.to(torch.bfloat16).transpose(0, 1),
-                self.w_kc.to(torch.bfloat16) * self.w_scale,
-            )
-        elif self.w_kc.dtype == torch.float8_e4m3fn:
-            q_nope_val, q_nope_scale = input_to_float8(
-                q_nope.transpose(0, 1), torch.float8_e4m3fn
-            )
-            q_nope_out = bmm_fp8(
-                q_nope_val, self.w_kc, q_nope_scale, self.w_scale, torch.bfloat16
-            )
-        else:
-            q_nope_out = torch.bmm(q_nope.transpose(0, 1), self.w_kc)
+        if PROFILING:
+            with tprof.record_function("bmm1"):
+                q_nope_out = self._bmm1_pass(q_nope)
+        else: 
+            q_nope_out = self._bmm1_pass(q_nope)
+    
         q_input[..., : self.kv_lora_rank] = q_nope_out.transpose(0, 1)
 
-        latent_cache = self.kv_a_proj_with_mqa(hidden_states)[0]
-        v_input = latent_cache[..., : self.kv_lora_rank]
-        v_input = self.kv_a_layernorm(v_input.contiguous()).unsqueeze(1)
-        k_input = latent_cache.unsqueeze(1)
-        k_input[..., : self.kv_lora_rank] = v_input
-        k_pe = k_input[..., self.kv_lora_rank :]
+        if PROFILING:
+            with tprof.record_function("kv_proj"):
+                v_input, k_input, k_pe = self._kv_proj_pass(hidden_states)
+        else:
+            v_input, k_input, k_pe = self._kv_proj_pass(hidden_states)
 
-        q_pe, k_pe = self.rotary_emb(positions, q_pe, k_pe)
+        if PROFILING:
+            with tprof.record_function("rotemb"):
+                q_pe, k_pe = self.rotary_emb(positions, q_pe, k_pe)
+        else:
+            q_pe, k_pe = self.rotary_emb(positions, q_pe, k_pe)
         q_input[..., self.kv_lora_rank :] = q_pe
         k_input[..., self.kv_lora_rank :] = k_pe
 
-        attn_output = self.attn_mqa(q_input, k_input, v_input, forward_batch)
+        if PROFILING:
+            with tprof.record_function("attn"):
+                attn_output = self.attn_mqa(q_input, k_input, v_input, forward_batch)
+        else:
+            attn_output = self.attn_mqa(q_input, k_input, v_input, forward_batch)
         attn_output = attn_output.view(-1, self.num_local_heads, self.kv_lora_rank)
 
-        if self.w_vc.dtype == torch.float8_e4m3fnuz:
-            # TODO(kernel): add bmm_fp8 for torch.float8_e4m3fnuz
-            attn_bmm_output = torch.bmm(
-                attn_output.to(torch.bfloat16).transpose(0, 1),
-                self.w_vc.to(torch.bfloat16) * self.w_scale,
-            )
-        elif self.w_vc.dtype == torch.float8_e4m3fn:
-            attn_output_val, attn_output_scale = input_to_float8(
-                attn_output.transpose(0, 1), torch.float8_e4m3fn
-            )
-            attn_bmm_output = bmm_fp8(
-                attn_output_val,
-                self.w_vc,
-                attn_output_scale,
-                self.w_scale,
-                torch.bfloat16,
-            )
+        if PROFILING:
+            with tprof.record_function("bmm2"):
+                attn_bmm_output = self._bmm2_pass(attn_output)
         else:
-            attn_bmm_output = torch.bmm(attn_output.transpose(0, 1), self.w_vc)
-        attn_output = attn_bmm_output.transpose(0, 1).flatten(1, 2)
-        output, _ = self.o_proj(attn_output)
+            attn_bmm_output = self._bmm2_pass(attn_output)
 
+        attn_output = attn_bmm_output.transpose(0, 1).flatten(1, 2)
+        if PROFILING:
+            with tprof.record_function("oproj"):
+                output, _ = self.o_proj(attn_output)
+        else:
+            output, _ = self.o_proj(attn_output)
         return output
 
 
@@ -738,7 +836,7 @@ class DeepseekV2DecoderLayer(nn.Module):
             config.hidden_size, eps=config.rms_norm_eps
         )
 
-    def forward(
+    def forward_(
         self,
         positions: torch.Tensor,
         hidden_states: torch.Tensor,
@@ -773,6 +871,19 @@ class DeepseekV2DecoderLayer(nn.Module):
             hidden_states = self.mlp(hidden_states)
 
         return hidden_states, residual
+
+    def forward( self,
+        positions: torch.Tensor,
+        hidden_states: torch.Tensor,
+        forward_batch: ForwardBatch,
+        residual: Optional[torch.Tensor],
+    ) -> torch.Tensor:
+        if PROFILING:
+            with tprof.record_function("decoder"):
+                hidden_states, residual = self.forward_(positions, hidden_states, forward_batch, residual)
+        else:
+            hidden_states, residual = self.forward_(positions, hidden_states, forward_batch, residual)
+        return hidden_states, residual 
 
 
 class DeepseekV2Model(nn.Module):
