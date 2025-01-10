@@ -289,7 +289,7 @@ def synchronize(device):
 
 
 def latency_test_run_once(
-    run_name, model_runner, rank_print, reqs, batch_size, input_len, output_len, device
+    run_name, model_runner, rank_print, reqs, batch_size, input_len, output_len, device, bench_flag=False
 ):
     max_batch_size = model_runner.max_total_num_tokens // (input_len + output_len)
     if batch_size > max_batch_size:
@@ -328,27 +328,41 @@ def latency_test_run_once(
     # Decode
     decode_latencies = []
 
-    # Adding torch.profile 
-    with tprof.profile(
-        activities=[tprof.ProfilerActivity.CPU, tprof.ProfilerActivity.CUDA],
-        on_trace_ready=tprof.tensorboard_trace_handler('./tprof_log'),
-        with_stack=True,
-        with_modules=True
-    ) as profiler: 
-        for i in range(output_len - 1):
-            synchronize(device)
-            tic = time.time()
-            next_token_ids, _ = decode(next_token_ids, batch, model_runner)
-            synchronize(device)
-            latency = time.time() - tic
-            tot_latency += latency
-            throughput = batch_size / latency
-            decode_latencies.append(latency)
-            if i < 5:
-                rank_print(
-                    f"Decode.  latency: {latency:6.5f} s, throughput: {throughput:9.2f} token/s"
-                )
-            profiler.step()
+    if PROFILING and bench_flag:
+        with tprof.profile(
+            activities=[tprof.ProfilerActivity.CPU, tprof.ProfilerActivity.CUDA],
+            on_trace_ready=tprof.tensorboard_trace_handler('./tprof_log'),
+            with_stack=True,
+            with_modules=True
+        ) as profiler: 
+            for i in range(5):
+                synchronize(device)
+                tic = time.time()
+                next_token_ids, _ = decode(next_token_ids, batch, model_runner)
+                synchronize(device)
+                latency = time.time() - tic
+                tot_latency += latency
+                throughput = batch_size / latency
+                decode_latencies.append(latency)
+                if i < 5:
+                    rank_print(
+                        f"Decode.  latency: {latency:6.5f} s, throughput: {throughput:9.2f} token/s"
+                    )
+                profiler.step()
+    else:
+            for i in range(output_len -1):
+                synchronize(device)
+                tic = time.time()
+                next_token_ids, _ = decode(next_token_ids, batch, model_runner)
+                synchronize(device)
+                latency = time.time() - tic
+                tot_latency += latency
+                throughput = batch_size / latency
+                decode_latencies.append(latency)
+                if i < 5:
+                    rank_print(
+                        f"Decode.  latency: {latency:6.5f} s, throughput: {throughput:9.2f} token/s"
+                    )
 
     # Record decode timing from 2nd output
     if output_len > 1:
@@ -401,7 +415,6 @@ def latency_test(
     )
 
     rank_print("Benchmark ...")
-
     # Run the sweep
     result_list = []
     for bs, il, ol in itertools.product(
@@ -417,6 +430,7 @@ def latency_test(
             il,
             ol,
             server_args.device,
+            True 
         )
         if ret is not None:
             result_list.append(ret)
