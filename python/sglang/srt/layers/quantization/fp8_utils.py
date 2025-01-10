@@ -55,8 +55,16 @@ def apply_w8a8_block_fp8_linear(
     q_input, x_scale = per_token_group_quant_fp8(input_2d, block_size[1])
     if ck_block_gemm:
         from sgl_kernel import gemm_a8w8_subblock
-        output = torch.zeros([q_input.shape[0],weight.shape[0]],dtype=torch.float32)
-        gemm_a8w8_subblock(q_input, weight, x_scale, weight_scale, output)
+
+        block_n, block_k = block_size[0], block_size[1]
+        output = torch.zeros(
+            [q_input.shape[0], weight.shape[0]],
+            dtype=torch.float32,
+            device=q_input.device,
+        )
+        gemm_a8w8_subblock(
+            q_input, weight, x_scale, weight_scale, block_n, block_k, output
+        )
     else:
         output = w8a8_block_fp8_matmul(
             q_input, weight, x_scale, weight_scale, block_size, output_dtype=input.dtype

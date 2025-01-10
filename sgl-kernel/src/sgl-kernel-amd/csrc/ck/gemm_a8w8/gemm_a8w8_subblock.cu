@@ -46,7 +46,9 @@ torch::Tensor gemm_a8w8_subblock(
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
     torch::Tensor& w_scale,
-    torch::Tensor& Y)
+    torch::Tensor& Y,
+    int scale_block_n,
+    int scale_block_k)
 {
     TORCH_CHECK(XQ.dtype() == WQ.dtype(), "Weights and activations should have the same dtype!");
     TORCH_CHECK(x_scale.dtype() == Y.dtype() && w_scale.dtype() == Y.dtype(),
@@ -71,6 +73,6 @@ torch::Tensor gemm_a8w8_subblock(
     // }
 
     // TODO: currently only support 1 instance
-    gemm_a8w8_subblockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
+    gemm_a8w8_subblockwise_impl(XQ, WQ, x_scale, w_scale, Y, scale_block_n, scale_block_k);
     return Y ;
 }
