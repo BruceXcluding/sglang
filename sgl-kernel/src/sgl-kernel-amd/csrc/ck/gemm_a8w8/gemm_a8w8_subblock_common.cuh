@@ -76,15 +76,15 @@ using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScal
          <Row, Col, DsLayout, ELayout,
           A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType,
           AElementOp,  BElementOp, CDEElementOp, GemmSpec,
-          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,  // BlockSize, ScaleBlockM, ScaleBlockN, ScaleBlockK
-          128, 128,     // MPerBlock, NPerBlock, KPerBlock
-          128, 16, 16,
-          16,   16,
-          4,    4,
+          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,  
+          128, 128, 128, 
+          16, 16,
+          16, 16,
+          4,  4,
           S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
           S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
           1,    2,  S<1, 32, 1, 8>,  S<8>,
-          ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v3, F8>;
+          ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1, F8>;
 
 template <typename DeviceGemmInstance, ck::index_t SplitK=1>
 __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
