@@ -4,6 +4,8 @@ import unittest
 import torch
 from sgl_kernel import gemm_a8w8_subblock
 
+from sglang.srt.layers.quantization.fp8_kernel import w8a8_block_fp8_matmul
+
 
 class TestCKGemm(unittest.TestCase):
 
@@ -51,16 +53,20 @@ class TestCKGemm(unittest.TestCase):
                     block_k = 128
                     ntile = (n + block_n - 1) // block_n
                     ktile = (n + block_k - 1) // block_k
-                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_row = (
+                        torch.rand([m, ktile], dtype=torch.float32).cuda() / 1000
+                    )
                     alpha_col = (
-                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                        torch.rand([ntile, ktile], dtype=torch.float32).cuda() / 1000
                     )
 
                     quantiles = [0.5, 0.2, 0.8]
                     out_triton = torch.empty(
-                        [a.shape[0], b.shape[0]], dtype=torch.half, device=a.device
+                        [a.shape[0], b.shape[0]], dtype=torch.float32, device=a.device
                     )
-                    gemm_a8w8_subblock(a_8, b_8, alpha_row, alpha_col, out_triton)
+                    gemm_a8w8_subblock(
+                        a_8, b_8, alpha_row, alpha_col, out_triton, block_n, block_k
+                    )
                     print(f"pass : {m}, {n}, {k}")
                 else:
                     a = torch.randint(-128, 127, (m, k), dtype=torch.int8).cuda()
@@ -69,15 +75,19 @@ class TestCKGemm(unittest.TestCase):
                     block_k = 128
                     ntile = (n + block_n - 1) // block_n
                     ktile = (n + block_k - 1) // block_k
-                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_row = (
+                        torch.rand([m, ktile], dtype=torch.float32).cuda() / 1000
+                    )
                     alpha_col = (
-                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                        torch.rand([ntile, ktile], dtype=torch.float32).cuda() / 1000
                     )
                     quantiles = [0.5, 0.2, 0.8]
                     out_triton = torch.empty(
-                        [a.shape[0], b.shape[0]], dtype=torch.half, device=a.device
+                        [a.shape[0], b.shape[0]], dtype=torch.float32, device=a.device
                     )
-                    gemm_a8w8_subblock(a, b, alpha_row, alpha_col, out_triton)
+                    gemm_a8w8_subblock(
+                        a, b, alpha_row, alpha_col, out_triton, block_n, block_k
+                    )
                     print(f"pass : {m}, {n}, {k}")
 
     @staticmethod
@@ -124,22 +134,32 @@ class TestCKGemm(unittest.TestCase):
                     block_k = 128
                     ntile = (n + block_n - 1) // block_n
                     ktile = (n + block_k - 1) // block_k
-                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_row = (
+                        torch.rand([m, ktile], dtype=torch.float32).cuda() / 1000
+                    )
                     alpha_col = (
-                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                        torch.rand([ntile, ktile], dtype=torch.float32).cuda() / 1000
                     )
 
                     ck_res = torch.zeros(
-                        [a_8.shape[0], b_8.shape[0]], dtype=torch.half, device=a.device
+                        [a_8.shape[0], b_8.shape[0]],
+                        dtype=torch.float32,
+                        device=a.device,
                     )
-                    gemm_a8w8_subblock(a_8, b_8, alpha_row, alpha_col, ck_res)
+                    gemm_a8w8_subblock(
+                        a_8, b_8, alpha_row, alpha_col, ck_res, block_n, block_k
+                    )
 
                     # convert to float32 to call torch.mm, same accuracy as fp8/int32
-                    torch_res = torch.mm(a, b.t())
-                    torch_rowwise = torch.mul(
-                        torch.mul(torch_res, alpha_row.to(torch.float)),
-                        alpha_col.to(torch.float),
-                    ).to(torch.half)
+                    block_size = [128, 128]
+                    triton_res = w8a8_block_fp8_matmul(
+                        a_8,
+                        b_8,
+                        alpha_row,
+                        alpha_col,
+                        block_size,
+                        output_dtype=a_8.dtype,
+                    )
                 # INT8
                 else:
                     a = torch.randint(-5, 5, (m, k), dtype=torch.int8).cuda()
@@ -148,15 +168,19 @@ class TestCKGemm(unittest.TestCase):
                     block_k = 128
                     ntile = (n + block_n - 1) // block_n
                     ktile = (n + block_k - 1) // block_k
-                    alpha_row = torch.rand([m, ktile], dtype=torch.half).cuda() / 1000
+                    alpha_row = (
+                        torch.rand([m, ktile], dtype=torch.float32).cuda() / 1000
+                    )
                     alpha_col = (
-                        torch.rand([ntile, ktile], dtype=torch.half).cuda() / 1000
+                        torch.rand([ntile, ktile], dtype=torch.float32).cuda() / 1000
                     )
 
                     ck_res = torch.zeros(
-                        [a.shape[0], b.shape[0]], dtype=torch.half, device=a.device
+                        [a.shape[0], b.shape[0]], dtype=torch.float32, device=a.device
                     )
-                    gemm_a8w8_subblock(a, b, alpha_row, alpha_col, ck_res)
+                    gemm_a8w8_subblock(
+                        a, b, alpha_row, alpha_col, ck_res, block_n, block_k
+                    )
 
                     # convert to float32 to call torch.mm, same accuracy as int8/int32
                     torch_res = torch.mm(a.to(torch.float32), b.t().to(torch.float32))
@@ -165,10 +189,10 @@ class TestCKGemm(unittest.TestCase):
                         alpha_col.to(torch.float),
                     ).to(torch.half)
 
-                if not torch.allclose(torch_rowwise, ck_res, 1e-4, 1e-4, True):
+                if not torch.allclose(triton_res, ck_res, 1e-4, 1e-4, True):
                     from math import sqrt
 
-                    diff = torch_rowwise - ck_res
+                    diff = triton_res - ck_res
                     idx = torch.nonzero(diff, as_tuple=True)
                     print(
                         f"m: {m}, n: {n}, k: {k}, # not close: {idx[0].shape[0]}, "

@@ -10,7 +10,9 @@ torch::Tensor gemm_a8w8_subblock(
   torch::Tensor& WQ,
   torch::Tensor& x_scale,
   torch::Tensor& w_scale,
-  torch::Tensor& Y);
+  torch::Tensor& Y,
+  int scale_block_n,
+  int scale_block_k);
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   // moe_align_block_size
