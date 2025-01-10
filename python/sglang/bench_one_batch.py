@@ -66,6 +66,9 @@ from sglang.srt.server_args import PortArgs, ServerArgs
 from sglang.srt.speculative.spec_info import SpeculativeAlgorithm
 from sglang.srt.utils import configure_logger, kill_process_tree, suppress_other_loggers
 
+PROFILING = 1 
+if PROFILING : 
+    import torch.profiler as tprof
 
 @dataclasses.dataclass
 class BenchArgs:
@@ -324,19 +327,28 @@ def latency_test_run_once(
 
     # Decode
     decode_latencies = []
-    for i in range(output_len - 1):
-        synchronize(device)
-        tic = time.time()
-        next_token_ids, _ = decode(next_token_ids, batch, model_runner)
-        synchronize(device)
-        latency = time.time() - tic
-        tot_latency += latency
-        throughput = batch_size / latency
-        decode_latencies.append(latency)
-        if i < 5:
-            rank_print(
-                f"Decode.  latency: {latency:6.5f} s, throughput: {throughput:9.2f} token/s"
-            )
+
+    # Adding torch.profile 
+    with tprof.profile(
+        activities=[tprof.ProfilerActivity.CPU, tprof.ProfilerActivity.CUDA],
+        on_trace_ready=tprof.tensorboard_trace_handler('./tprof_log'),
+        with_stack=True,
+        with_modules=True
+    ) as profiler: 
+        for i in range(output_len - 1):
+            synchronize(device)
+            tic = time.time()
+            next_token_ids, _ = decode(next_token_ids, batch, model_runner)
+            synchronize(device)
+            latency = time.time() - tic
+            tot_latency += latency
+            throughput = batch_size / latency
+            decode_latencies.append(latency)
+            if i < 5:
+                rank_print(
+                    f"Decode.  latency: {latency:6.5f} s, throughput: {throughput:9.2f} token/s"
+                )
+            profiler.step()
 
     # Record decode timing from 2nd output
     if output_len > 1:
