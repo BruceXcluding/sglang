@@ -3,7 +3,7 @@
 
 #include "../gemm_a8w8_subblock_common.cuh"
 
-template <typename DEDataType, typename ABDataType>
+
 torch::Tensor
 a8w8_subblockwise_128x16x32x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave_v2(
     torch::Tensor& XQ,
@@ -39,11 +39,3 @@ a8w8_subblockwise_128x16x32x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave
   return gemm_a8w8_subblockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
 }
 
-template torch::Tensor
-a8w8_subblockwise_128x16x32x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave_v2<B16, F8>(
-    torch::Tensor& XQ,
-    torch::Tensor& WQ,
-    torch::Tensor& x_scale,
-    torch::Tensor& w_scale,
-    torch::Tensor& Y
-)

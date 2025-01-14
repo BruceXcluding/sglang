@@ -2,7 +2,6 @@
 #include "gemm_a8w8_subblock_manifest.h"
 #include "gemm_a8w8_subblock_lookup.h"
 
-template <typename DEDataType, typename ABDataType>
 SubblockwiseKernel sublbockwise_heuristic_dispatch(int M, int N, int K) {
   // Apply shape heuristics to find a suitable kernel implementation.
   /* TODO: add support for DeepSeek-v3 Tuning Config  */
@@ -16,7 +15,6 @@ static constexpr int nextPow2(unsigned int num) {
   return 1 << (CHAR_BIT * sizeof(num) - __builtin_clz(num - 1));
 }
 
-template <typename DEDataType, typename ABDataType>
 SubblockwiseKernel subblockwise_dispatch(int M, int N, int K) {
   // For a given shape, either find the best kernel via lookup or heuristic.
   // For many small M shapes, we bucket them to the next largest kernel.
@@ -31,14 +29,14 @@ SubblockwiseKernel subblockwise_dispatch(int M, int N, int K) {
   }
   // For certain high priority shapes, we directly use the best kernel rather
   // than use heuristics.
-  static const KernelLookupMap<DEDataType, ABDataType> lookup{};
+  static const KernelLookupMap lookup{};
   auto it = lookup.find(padded_m, N, K);
   // If we found an optimal kernel, use it.
   if (it != lookup.end()) {
     return it->second;
   }
   // Otherwise, use heuristics.
-  return sublbockwise_heuristic_dispatch<DEDataType, ABDataType>(M, N, K);
+  return sublbockwise_heuristic_dispatch(M, N, K);
 }
 
 torch::Tensor gemm_a8w8_subblock(
@@ -57,14 +55,14 @@ torch::Tensor gemm_a8w8_subblock(
     int K = XQ.size(1);
     if (Y.dtype() == at::ScalarType::Half) {
         if(XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
-            subblockwise_dispatch<F16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
+            subblockwise_dispatch(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
         }else {
             TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
         }
     }
     else if (Y.dtype() == at::ScalarType::BFloat16) {
         if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
-                subblockwise_dispatch<B16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
+                subblockwise_dispatch(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
             } else {
                 TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
             }

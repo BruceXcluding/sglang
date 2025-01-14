@@ -71,28 +71,16 @@ static constexpr ck::index_t Scale_Block_M = 1;
 static constexpr ck::index_t Scale_Block_N = 128;
 static constexpr ck::index_t Scale_Block_K = 128;
 
-template <typename ABDataType>
-struct DTypeHelpe;
-
-template <>
-struct DTypeHelper<F8> {
-    using Acc = F32;
-    using CShuffle = F32;
-    using Compute = F8;
-};
-
-template <typename DEDataType>
-using DsDataType = ck::Tuple<DEDataType, DEDataType>;
-
 // Now a helper function that dynamically selects the kernel based on `Scale_Block_N` and `Scale_Block_K`
-template<index_t BlockSize,      
-        index_t MPerBlock,
-        index_t NPerBlock,
-        index_t KPerBlock,
-        index_t MPerXDL,
-        index_t NPerXDL,
-        index_t MXdlPerWave,
-        index_t NXdlPerWave,       
+template<
+        int BlockSize,      
+        int MPerBlock,
+        int NPerBlock,
+        int KPerBlock,
+        int MPerXDL,
+        int NPerXDL,
+        int MXdlPerWave,
+        int NXdlPerWave,       
         typename ABlockTransferThreadClusterLengths_AK0_M_AK1,  
         typename BBlockTransferThreadClusterLengths_BK0_N_BK1,
         typename CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
@@ -101,16 +89,14 @@ template<index_t BlockSize,
         ck::BlockGemmPipelineVersion PIPELINE_VERSION>
     using DeviceGemmHelper = 
         ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3<
-            A0Layout,
-            B0Layout,
-            DsLayout,
-            ELayout , 
-            ABDataType,
-            ABDataType,
-            DsDataType<DEDataType>,
-            DEDataType,
-            typename DTypeHelper<ABDataType>::Acc,
-            typename DTypeHelper<ABDataType>::CShuffle,
+            A0DataType,
+            A1DataType,
+            B0DataType,
+            B1DataType,
+            DsDataType,
+            EDataType,
+            AccDataType,
+            CShuffleDataType,
             AElementOp,
             BElementOp,
             CDEElementOp,     
@@ -148,7 +134,7 @@ template<index_t BlockSize,
             CDEShuffleBlockTransferScalarPerVectors,
             LOOP_SCHED, 
             PIPELINE_VERSION, 
-            typename DTypeHelper<ABDataType>::Compute> ; 
+            F8> ; 
 
 // Wrapper function that dynamically selects gemm instances 
 templat<typename DeviceGemmInstance, ck::index_t SplitK=1>
@@ -171,8 +157,7 @@ __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     int StrideE = N;
 
     // TODO: fix me 
-    using DeviceGemmKernel = DeviceGemmInstance<Scale_Block_N, Scale_Block_K>;
-    auto device_gemm = DeviceGemmKernel{};
+    auto device_gemm = DeviceGemmInstance{};
     auto invoker = device_gemm.MakeInvoker();
 
     auto a_element_op = AElementOp{};
