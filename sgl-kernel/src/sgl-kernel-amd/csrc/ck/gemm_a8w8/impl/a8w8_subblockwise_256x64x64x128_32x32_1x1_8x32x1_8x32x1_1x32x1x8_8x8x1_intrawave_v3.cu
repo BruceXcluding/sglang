@@ -5,7 +5,7 @@
 
 template <typename DEDataType, typename ABDataType>
 torch::Tensor
-a8w8_subblockwise_256x64x128x128_32x32_1x2_8x32x1_8x32x1_1x32x1x8_8x8x1_1x1_intrawave_v3(
+a8w8_subblockwise_256x64x64x128_32x32_1x1_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawave_v3(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
@@ -24,25 +24,23 @@ a8w8_subblockwise_256x64x128x128_32x32_1x2_8x32x1_8x32x1_1x32x1x8_8x8x1_1x1_intr
     DEDataType, ABDataType,
     256,
     64,
-    128,
+    64,
     128,
     32,
     32,
     1,
-    2,
+    1,
     S<8, 32, 1>,
     S<8, 32, 1>,
     S<1, 32, 1, 8>,
-    S<8, 8, 1>,
-    1,
-    1,
+    S<8, 8, 1>, 
     ck::BlockGemmPipelineScheduler::Intrawave,
     ck::BlockGemmPipelineVersion::v3,
   return gemm_a8w8_subblockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
 }
 
 template torch::Tensor
-a8w8_subblockwise_256x64x128x128_32x32_1x2_8x32x1_8x32x1_1x32x1x8_8x8x1_1x1_intrawave_v3<B16, F8>(
+a8w8_subblockwise_256x64x64x128_32x32_1x1_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawave_v3<B16, F8>(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
