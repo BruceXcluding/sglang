@@ -69,24 +69,61 @@ static constexpr auto GemmSpec = ck::tensor_operation::device::GemmSpecializatio
 
 static constexpr ck::index_t Scale_Block_M = 1;
 
-// Template for DeviceGemmInstance with dynamic block sizes
-template <ck::index_t Scale_Block_N, ck::index_t Scale_Block_K>
-using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
-    // clang-format off
-         <Row, Col, DsLayout, ELayout,
-          A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType,
-          AElementOp,  BElementOp, CDEElementOp, GemmSpec,
-          256, Scale_Block_M, Scale_Block_N, Scale_Block_K,
-          128, 128, 128,
-          16, 16,
-          16, 16,
-          4,  4,
-          S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
-          S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
-          1,    2,  S<1, 32, 1, 8>,  S<8>,
-          ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1, F8>;
+// // Template for DeviceGemmInstance with dynamic block sizes
+// template <ck::index_t Scale_Block_N, ck::index_t Scale_Block_K>
+// using DeviceGemmInstance = ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3
+//     // clang-format off
+//          <Row, Col, DsLayout, ELayout,
+//           A0DataType, A1DataType, B0DataType, B1DataType, DsDataType, EDataType, AccDataType, CShuffleDataType,
+//           AElementOp,  BElementOp, CDEElementOp, GemmSpec,
+//           256, Scale_Block_M, Scale_Block_N, Scale_Block_K,
+//           128, 128, 128,
+//           16, 16,
+//           16, 16,
+//           4,  4,
+//           S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
+//           S<8, 32, 1>, S<1, 0, 2>, S<1, 0, 2>, 2, 16, 16, 0,
+//           1,    2,  S<1, 32, 1, 8>,  S<8>,
+//           ck::BlockGemmPipelineScheduler::Intrawave, ck::BlockGemmPipelineVersion::v1, F8>;
+
 
 // Now a helper function that dynamically selects the kernel based on `Scale_Block_N` and `Scale_Block_K`
+template<index_t BlockSize,      
+        index_t MPerBlock, index_t NPerBlock, index_t KPerBlock,
+        index_t AK1, index_t BK1,
+        index_t MPerXDL, index_t NPerXDL,
+        index_t MXdlPerWave, index_t NXdlPerWave,       
+        typename ABlockTransferThreadClusterLengths_AK0_M_AK1,  
+        typename BBlockTransferThreadClusterLengths_BK0_N_BK1,
+        typename CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
+        typename CDEShuffleBlockTransferScalarPerVectors,        
+        BlockGemmPipelineScheduler BlkGemmPipeSched = BlockGemmPipelineScheduler::Intrawave,
+        BlockGemmPipelineVersion BlkGemmPipelineVer = BlockGemmPipelineVersion::v1 >
+    using DeviceGemmHelper = 
+        ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3<
+            A0Layout,B0Layout, DsLayout, ELayout , 
+            F8, F32, F8, F32,
+            Tuple<>, BF16, F32, F32,
+            AElementOp, BElementOp, CDEElementOp,     
+            GemmSpec,    
+            BlockSize, 1, 128, 128 ,  
+            MPerBlock, NPerBlock, KPerBlock,
+            AK1, BK1,
+            MPerXDL, NPerXDL,
+            MXdlPerWave, NXdlPerWave,   
+            ABlockTransferThreadClusterLengths_AK0_M_AK1 ,
+            S<1, 0, 2>,   S<1, 0, 2>, 
+            2, 16, 16, 0,  
+            BBlockTransferThreadClusterLengths_BK0_N_BK1,
+            S<1, 0, 2>,    S<1, 0, 2>,
+            2, 16, 16, 0,  
+            1, 1, 
+            CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
+            CDEShuffleBlockTransferScalarPerVectors,
+            BlkGemmPipeSched , 
+            BlkGemmPipelineVer, 
+            F8 > ; 
+
 template <ck::index_t Scale_Block_N, ck::index_t Scale_Block_K>
 __forceinline__ void run_gemm_kernel(
     torch::Tensor& XQ,
