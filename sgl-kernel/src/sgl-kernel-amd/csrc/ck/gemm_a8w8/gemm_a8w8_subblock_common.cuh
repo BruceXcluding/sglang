@@ -65,11 +65,6 @@ using AElementOp = PassThrough;
 using BElementOp = PassThrough;
 using CDEElementOp = PassThrough;
 
-static constexpr auto GemmSpec = ck::tensor_operation::device::GemmSpecialization::MNKPadding;
-
-static constexpr ck::index_t Scale_Block_M = 1;
-static constexpr ck::index_t Scale_Block_N = 128;
-static constexpr ck::index_t Scale_Block_K = 128;
 
 // Now a helper function that dynamically selects the kernel based on `Scale_Block_N` and `Scale_Block_K`
 template<
@@ -86,7 +81,8 @@ template<
         typename CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
         typename CDEShuffleBlockTransferScalarPerVectors,        
         ck::BlockGemmPipelineScheduler LOOP_SCHED,
-        ck::BlockGemmPipelineVersion PIPELINE_VERSION>
+        ck::BlockGemmPipelineVersion PIPELINE_VERSION,
+        auto GemmSpec = ck::tensor_operation::device::GemmSpecialization::MNKPadding>
         using DeviceGemmHelper = 
         ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3<
             Row, Col, DsLayout, ELayout,
@@ -144,8 +140,7 @@ __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
     torch::Tensor& w_scale,
-    torch::Tensor& Y,
-)
+    torch::Tensor& Y)
 {
     int M = XQ.size(0);
     int N = WQ.size(0);
