@@ -131,10 +131,10 @@ template<
             CDEShuffleBlockTransferScalarPerVectors,
             LOOP_SCHED, 
             PIPELINE_VERSION, 
-            F8> ; 
+            F8>; 
 
 // Wrapper function that dynamically selects gemm instances 
-template<typename DeviceGemmInstance, ck::index_t SplitK=1>
+template <typename DeviceGemmInstance, ck::index_t SplitK=1>
 __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     torch::Tensor& XQ,
     torch::Tensor& WQ,

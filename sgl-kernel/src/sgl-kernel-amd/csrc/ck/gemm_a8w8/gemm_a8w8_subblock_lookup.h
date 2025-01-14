@@ -145,7 +145,7 @@ private:
       {{32, 4096, 512},
       a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_2x2x1_intrawave_v2},
       {{64, 4096, 512},
-      a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x1_4x4x1_intrawave_v2},
+      a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_intrawave_v2},
       {{128, 4096, 512},
       a8w8_subblockwise_128x32x64x128_32x32_1x1_8x16x1_8x16x1_1x16x1x8_8x8x1_intrawave_v2},
       {{256, 4096, 512},
@@ -193,7 +193,7 @@ private:
       
       /* 7168, 256 */
       {{16, 7168, 256},
-      a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x1_4x4x1_intrawave_v1},
+      a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_intrawave_v1},
       {{32, 7168, 256},
       a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave_v1},
       {{64, 7168, 256},

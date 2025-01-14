@@ -16,9 +16,7 @@ a8w8_subblockwise_256x64x128x128_32x32_1x2_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawav
   int M = size_to_dim_(XQ.dim() - 1, XQ.sizes());
   int N = WQ.size(0);
   int K = WQ.size(1);
-  bool k_pad = (K % 128 != 0);
-  bool m_pad = (M % 128 != 0);
-  bool n_pad = (N % 128 != 0);
+
   // TODO: add template arguments from best config list
   using DeviceGemmInstance = DeviceGemmHelper<
     256,
