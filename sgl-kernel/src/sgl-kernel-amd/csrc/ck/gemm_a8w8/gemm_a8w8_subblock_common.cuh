@@ -65,7 +65,6 @@ using AElementOp = PassThrough;
 using BElementOp = PassThrough;
 using CDEElementOp = PassThrough;
 
-static constexpr auto GemmSpec = ck::tensor_operation::device::GemmSpecialization::MNKPadding;
 
 static constexpr ck::index_t Scale_Block_M = 1;
 static constexpr ck::index_t Scale_Block_N = 128;
@@ -86,7 +85,8 @@ template<
         typename CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
         typename CDEShuffleBlockTransferScalarPerVectors,        
         ck::BlockGemmPipelineScheduler LOOP_SCHED,
-        ck::BlockGemmPipelineVersion PIPELINE_VERSION>
+        ck::BlockGemmPipelineVersion PIPELINE_VERSION,
+        auto GemmSpec = ck::tensor_operation::device::GemmSpecialization::MNKPadding>
         using DeviceGemmHelper = 
         ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3<
             A0DataType,

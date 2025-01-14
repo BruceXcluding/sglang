@@ -35,6 +35,7 @@ a8w8_subblockwise_256x64x128x128_32x32_1x2_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawav
     S<8, 8, 1>,
     ck::BlockGemmPipelineScheduler::Intrawave,
     ck::BlockGemmPipelineVersion::v3,
+    ck::tensor_operation::device::GemmSpecialization::MKPadding>;
   return gemm_a8w8_subblockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
 }
 
