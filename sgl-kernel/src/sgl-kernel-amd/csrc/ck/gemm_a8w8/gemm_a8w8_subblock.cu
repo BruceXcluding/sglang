@@ -57,14 +57,14 @@ torch::Tensor gemm_a8w8_subblock(
         if(XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
             subblockwise_dispatch(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
         }else {
-            TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
+            TORCH_CHECK(false, "Weights and activations should be FP8e4m3fnuz!");
         }
     }
     else if (Y.dtype() == at::ScalarType::BFloat16) {
         if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
                 subblockwise_dispatch(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
             } else {
-                TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
+                TORCH_CHECK(false, "Weights and activations should be FP8e4m3fnuz!");
             }
     }
     return Y ;

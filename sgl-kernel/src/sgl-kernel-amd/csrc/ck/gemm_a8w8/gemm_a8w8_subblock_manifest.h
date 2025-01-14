@@ -54,7 +54,7 @@ a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_2x2x1_intrawave
 );
 
 torch::Tensor
-a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave_v1(
+a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_2x2x1_intrawave_v1(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
     torch::Tensor& x_scale,

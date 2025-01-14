@@ -67,7 +67,7 @@ using CDEElementOp = PassThrough;
 
 
 // Now a helper function that dynamically selects the kernel based on `Scale_Block_N` and `Scale_Block_K`
-template<
+template <
         int BlockSize,      
         int MPerBlock,
         int NPerBlock,

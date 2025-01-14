@@ -5,7 +5,7 @@
 
 
 torch::Tensor
-a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave_v1(
+a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_2x2x1_intrawave_v1(
     torch::Tensor& XQ,
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
@@ -28,7 +28,7 @@ a8w8_subblockwise_128x32x16x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave
     S<8, 16, 1>,
     S<8, 16, 1>,
     S<1, 16, 1, 8>,
-    S<4, 4, 1>,
+    S<2, 2, 1>,
     ck::BlockGemmPipelineScheduler::Intrawave,
     ck::BlockGemmPipelineVersion::v1,
     ck::tensor_operation::device::GemmSpecialization::MKPadding>;

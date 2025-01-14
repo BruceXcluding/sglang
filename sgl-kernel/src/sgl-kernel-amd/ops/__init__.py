@@ -25,7 +25,7 @@ def moe_align_block_size(
     )
 
 
-def gemm_a8w8_subblock(XQ, WQ, x_scale, w_scale, Y, scale_block_n, scale_block_k):
+def gemm_a8w8_subblock(XQ, WQ, x_scale, w_scale, Y):
     """
     Perform GEMM operation with a8w8 subblock kernel.
 
@@ -35,8 +35,6 @@ def gemm_a8w8_subblock(XQ, WQ, x_scale, w_scale, Y, scale_block_n, scale_block_k
     x_scale (torch.Tensor): Scaling factors for XQ.
     w_scale (torch.Tensor): Scaling factors for WQ.
     Y (torch.Tensor): The output tensor to store the result.
-    scale_block_n (int): Block size for N dimension. Default is 128.
-    scale_block_k (int): Block size for K dimension. Default is 128.
 
     Returns:
     torch.Tensor: The result tensor Y after performing the GEMM operation.
