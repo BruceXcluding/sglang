@@ -46,33 +46,28 @@ torch::Tensor gemm_a8w8_subblock(
     torch::Tensor& WQ,
     torch::Tensor& x_scale,
     torch::Tensor& w_scale,
-    torch::Tensor& Y,
-    int scale_block_n,
-    int scale_block_k)
+    torch::Tensor& Y)
 {
     TORCH_CHECK(XQ.dtype() == WQ.dtype(), "Weights and activations should have the same dtype!");
     TORCH_CHECK(x_scale.dtype() == Y.dtype() && w_scale.dtype() == Y.dtype(),
                 "Scales and output should have the same dtype!");
 
-    // int M = XQ.size(0);
-    // int N = WQ.size(0);
-    // int K = XQ.size(1);
-    // if (Y.dtype() == at::ScalarType::Half) {
-    //     if(XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
-    //         subblockwise_dispatch<F16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
-    //     }else {
-    //         TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
-    //     }
-    // }
-    // else if (Y.dtype() == at::ScalarType::BFloat16) {
-    //     if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
-    //             subblockwise_dispatch<B16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
-    //         } else {
-    //             TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
-    //         }
-    // }
-
-    // TODO: currently only support 1 instance
-    gemm_a8w8_subblockwise_impl(XQ, WQ, x_scale, w_scale, Y, scale_block_n, scale_block_k);
+    int M = XQ.size(0);
+    int N = WQ.size(0);
+    int K = XQ.size(1);
+    if (Y.dtype() == at::ScalarType::Half) {
+        if(XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
+            subblockwise_dispatch<F16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
+        }else {
+            TORCH_CHECK(false, "Weights and activations should both be FP8e4m3fnuz!");
+        }
+    }
+    else if (Y.dtype() == at::ScalarType::BFloat16) {
+        if (XQ.dtype() == at::ScalarType::Float8_e4m3fnuz) {
+                subblockwise_dispatch<B16, F8>(M, N, K)(XQ, WQ, x_scale, w_scale, Y);
+            } else {
+                TORCH_CHECK(false, "Weights and activations should both be INT8 or FP8e4m3fnuz!");
+            }
+    }
     return Y ;
 }

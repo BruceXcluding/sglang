@@ -42,4 +42,4 @@ def gemm_a8w8_subblock(XQ, WQ, x_scale, w_scale, Y, scale_block_n, scale_block_k
     torch.Tensor: The result tensor Y after performing the GEMM operation.
     """
 
-    _gemm_a8w8_subblock(XQ, WQ, x_scale, w_scale, Y, scale_block_n, scale_block_k)
+    _gemm_a8w8_subblock(XQ, WQ, x_scale, w_scale, Y)
