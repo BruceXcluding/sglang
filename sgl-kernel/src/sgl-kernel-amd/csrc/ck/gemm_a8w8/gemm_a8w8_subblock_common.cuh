@@ -68,43 +68,87 @@ using CDEElementOp = PassThrough;
 static constexpr auto GemmSpec = ck::tensor_operation::device::GemmSpecialization::MNKPadding;
 
 static constexpr ck::index_t Scale_Block_M = 1;
+static constexpr ck::index_t Scale_Block_N = 128;
+static constexpr ck::index_t Scale_Block_K = 128;
+
+template <typename ABDataType>
+struct DTypeHelpe;
+
+template <>
+struct DTypeHelper<F8> {
+    using Acc = F32;
+    using CShuffle = F32;
+    using Compute = F8;
+};
+
+template <typename DEDataType>
+using DsDataType = ck::Tuple<DEDataType, DEDataType>;
 
 // Now a helper function that dynamically selects the kernel based on `Scale_Block_N` and `Scale_Block_K`
 template<index_t BlockSize,      
-        index_t MPerBlock, index_t NPerBlock, index_t KPerBlock,
-        index_t AK1, index_t BK1,
-        index_t MPerXDL, index_t NPerXDL,
-        index_t MXdlPerWave, index_t NXdlPerWave,       
+        index_t MPerBlock,
+        index_t NPerBlock,
+        index_t KPerBlock,
+        index_t MPerXDL,
+        index_t NPerXDL,
+        index_t MXdlPerWave,
+        index_t NXdlPerWave,       
         typename ABlockTransferThreadClusterLengths_AK0_M_AK1,  
         typename BBlockTransferThreadClusterLengths_BK0_N_BK1,
         typename CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
         typename CDEShuffleBlockTransferScalarPerVectors,        
-        BlockGemmPipelineScheduler BlkGemmPipeSched = BlockGemmPipelineScheduler::Intrawave,
-        BlockGemmPipelineVersion BlkGemmPipelineVer = BlockGemmPipelineVersion::v1 >
+        ck::BlockGemmPipelineScheduler LOOP_SCHED,
+        ck::BlockGemmPipelineVersion PIPELINE_VERSION>
     using DeviceGemmHelper = 
         ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3<
-            A0Layout,B0Layout, DsLayout, ELayout , 
-            F8, F32, F8, F32,
-            Tuple<>, BF16, F32, F32,
-            AElementOp, BElementOp, CDEElementOp,     
+            A0Layout,
+            B0Layout,
+            DsLayout,
+            ELayout , 
+            ABDataType,
+            ABDataType,
+            DsDataType<DEDataType>,
+            DEDataType,
+            typename DTypeHelper<ABDataType>::Acc,
+            typename DTypeHelper<ABDataType>::CShuffle,
+            AElementOp,
+            BElementOp,
+            CDEElementOp,     
             GemmSpec,    
-            BlockSize, 1, 128, 128 ,  
-            MPerBlock, NPerBlock, KPerBlock,
-            AK1, BK1,
-            MPerXDL, NPerXDL,
-            MXdlPerWave, NXdlPerWave,   
+            BlockSize,
+            1,
+            128,
+            128,
+            MPerBlock,
+            NPerBlock,
+            KPerBlock,
+            16,
+            16,
+            MPerXDL,
+            NPerXDL,
+            MXdlPerWave,
+            NXdlPerWave,   
             ABlockTransferThreadClusterLengths_AK0_M_AK1 ,
-            S<1, 0, 2>,   S<1, 0, 2>, 
-            2, 16, 16, 0,  
+            S<1, 0, 2>,
+            S<1, 0, 2>, 
+            2,
+            16,
+            16,
+            0,  
             BBlockTransferThreadClusterLengths_BK0_N_BK1,
-            S<1, 0, 2>,    S<1, 0, 2>,
-            2, 16, 16, 0,  
-            1, 1, 
+            S<1, 0, 2>,
+            S<1, 0, 2>,
+            2,
+            16,
+            16,
+            0,  
+            1,
+            1, 
             CShuffleBlockTransferClusterLengths_MBlock_MPerBlock_NBlock_NPerBlock,
             CDEShuffleBlockTransferScalarPerVectors,
-            BlkGemmPipeSched , 
-            BlkGemmPipelineVer, 
-            F8 > ; 
+            LOOP_SCHED, 
+            PIPELINE_VERSION, 
+            typename DTypeHelper<ABDataType>::Compute> ; 
 
 // Wrapper function that dynamically selects gemm instances 
 templat<typename DeviceGemmInstance, ck::index_t SplitK=1>
