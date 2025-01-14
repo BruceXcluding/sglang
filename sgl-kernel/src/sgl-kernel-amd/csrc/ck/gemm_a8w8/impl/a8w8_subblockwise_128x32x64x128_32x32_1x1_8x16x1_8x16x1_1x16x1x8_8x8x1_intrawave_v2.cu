@@ -21,7 +21,6 @@ a8w8_subblockwise_128x32x64x128_32x32_1x1_8x16x1_8x16x1_1x16x1x8_8x8x1_intrawave
   bool n_pad = (N % 128 != 0);
   // TODO: add template arguments from best config list
   using DeviceGemmInstance = DeviceGemmHelper<
-    DEDataType, ABDataType,
     128,
     32,
     64,

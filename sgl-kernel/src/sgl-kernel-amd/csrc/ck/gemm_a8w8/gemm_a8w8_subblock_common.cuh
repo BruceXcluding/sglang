@@ -87,7 +87,7 @@ template<
         typename CDEShuffleBlockTransferScalarPerVectors,        
         ck::BlockGemmPipelineScheduler LOOP_SCHED,
         ck::BlockGemmPipelineVersion PIPELINE_VERSION>
-    using DeviceGemmHelper = 
+        using DeviceGemmHelper = 
         ck::tensor_operation::device::DeviceGemmMultiD_ABScale_Xdl_CShuffle_V3<
             A0DataType,
             A1DataType,
@@ -137,7 +137,7 @@ template<
             F8> ; 
 
 // Wrapper function that dynamically selects gemm instances 
-templat<typename DeviceGemmInstance, ck::index_t SplitK=1>
+template<typename DeviceGemmInstance, ck::index_t SplitK=1>
 __forceinline__ torch::Tensor gemm_a8w8_subblockwise_impl(
     torch::Tensor& XQ,
     torch::Tensor& WQ,

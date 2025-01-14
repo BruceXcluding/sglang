@@ -18,7 +18,6 @@ a8w8_subblockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x1_4x4x1_intrawave_v2
   bool m_pad = (M % 128 != 0);
   bool n_pad = (N % 128 != 0);
   using DeviceGemmInstance = DeviceGemmHelper<
-    DEDataType, ABDataType,
     64,
     16,
     16,
