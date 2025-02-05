@@ -129,6 +129,6 @@ void apply_rope_pos_ids_cos_sin_cache(at::Tensor q, at::Tensor k, at::Tensor q_r
                                       int64_t cuda_stream);
 
 // gemm_a8w8_block
-torch::Tensor gemm_a8w8_subblock(torch::Tensor& XQ, torch::Tensor& WQ,
+torch::Tensor gemm_a8w8_block(torch::Tensor& XQ, torch::Tensor& WQ,
                                  torch::Tensor& x_scale, torch::Tensor& w_scale,
                                  torch::Tensor& Y);

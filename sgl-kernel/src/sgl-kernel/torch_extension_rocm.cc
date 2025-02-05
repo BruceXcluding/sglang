@@ -28,8 +28,8 @@ TORCH_LIBRARY_EXPAND(sgl_kernels, m) {
   // gemm_a8w8_block
   m.def(
     "gemm_a8w8_block(Tensor XQ, Tensor WQ, Tensor x_scale, Tensor w_scale, Tensor Y) -> Tensor"
-  )
-  m.impl("gemm_a8w8_block", torch::kCUDA, &gemm_a8w8_block)
+  );
+  m.impl("gemm_a8w8_block", torch::kCUDA, &gemm_a8w8_block);
 }
 
 REGISTER_EXTENSION(_kernels)

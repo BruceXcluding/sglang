@@ -49,8 +49,7 @@ sources = [
     "src/sgl-kernel/torch_extension_rocm.cc",
     "src/sgl-kernel/csrc/moe_align_kernel.cu",
     "src/sgl-kernel/csrc/ck_extensions/gemm_a8w8/gemm_a8w8_block.cu",
-]
-+glob.glob("src/sgl-kernel/csrc/ck_extensions/gemm_a8w8/*.cu")
+]+glob.glob("src/sgl-kernel/csrc/ck_extensions/gemm_a8w8/impl/*.cu")
 
 cxx_flags = ["-O3"]
 libraries = ["hiprtc", "amdhip64", "c10", "torch", "torch_python"]
