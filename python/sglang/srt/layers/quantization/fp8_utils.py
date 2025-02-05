@@ -1,3 +1,4 @@
+import os
 from typing import List, Optional, Tuple
 
 import torch
@@ -10,6 +11,8 @@ from sglang.srt.layers.quantization.fp8_kernel import (
 from sglang.srt.utils import is_hip
 
 is_hip_ = is_hip()
+
+ck_block_gemm = bool(int(os.getenv("CK_BLOCK_GEMM", "0")))
 
 
 def normalize_e4m3fn_to_e4m3fnuz(
@@ -50,9 +53,18 @@ def apply_w8a8_block_fp8_linear(
     output_shape = [*input.shape[:-1], weight.shape[0]]
 
     q_input, x_scale = per_token_group_quant_fp8(input_2d, block_size[1])
-    output = w8a8_block_fp8_matmul(
-        q_input, weight, x_scale, weight_scale, block_size, output_dtype=input.dtype
-    )
+    if ck_block_gemm:
+        from sgl_kernel import gemm_a8w8_block
+        output = torch.zeros(
+            [q_input.shape[0], weight.shape[0]],
+            dtype=input.dtype,
+            device=q_input.device,
+        )
+        gemm_a8w8_block(q_input, weight, x_scale, weight_scale, output)
+    else:
+        output = w8a8_block_fp8_matmul(
+            q_input, weight, x_scale, weight_scale, block_size, output_dtype=input.dtype
+        )
 
     if bias is not None:
         output = output + bias

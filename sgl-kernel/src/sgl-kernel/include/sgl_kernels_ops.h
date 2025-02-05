@@ -127,3 +127,8 @@ void top_p_sampling_from_probs(at::Tensor probs, at::Tensor uniform_samples, at:
 void apply_rope_pos_ids_cos_sin_cache(at::Tensor q, at::Tensor k, at::Tensor q_rope, at::Tensor k_rope,
                                       at::Tensor cos_sin_cache, at::Tensor pos_ids, bool interleave,
                                       int64_t cuda_stream);
+
+// gemm_a8w8_block
+torch::Tensor gemm_a8w8_subblock(torch::Tensor& XQ, torch::Tensor& WQ,
+                                 torch::Tensor& x_scale, torch::Tensor& w_scale,
+                                 torch::Tensor& Y);
