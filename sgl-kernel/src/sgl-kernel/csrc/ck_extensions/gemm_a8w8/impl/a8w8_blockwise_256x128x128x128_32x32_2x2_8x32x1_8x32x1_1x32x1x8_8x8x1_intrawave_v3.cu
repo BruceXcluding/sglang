@@ -16,7 +16,7 @@ a8w8_blockwise_256x128x128x128_32x32_2x2_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawave_
   int N = WQ.size(0);
   int K = WQ.size(1);
 
-  // TODO: add template arguments from best config list
+  // add template arguments from best config list
   using DeviceGemmInstance = DeviceGemmHelper<
     256,
     128,
