@@ -13,10 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 
+import glob
 import multiprocessing
 import os
 import sys
-import glob
 from pathlib import Path
 
 import torch
@@ -37,7 +37,7 @@ def _get_version():
 
 
 operator_namespace = "sgl_kernels"
-ck_default = root/ "3rdparty" / "composable_kernel"
+ck_default = root / "3rdparty" / "composable_kernel"
 ck = Path(os.environ.get("CUSTOM_CK_SRC_DIR", default=ck_default))
 include_dirs = [
     ck.resolve() / "include",
@@ -50,7 +50,7 @@ sources = [
     "src/sgl-kernel/csrc/moe_align_kernel.cu",
     "src/sgl-kernel/csrc/ck_extensions/gemm_a8w8/gemm_a8w8_block.cu",
 ]
-+ glob.glob("src/sgl-kernel/csrc/ck_extensions/gemm_a8w8/*.cu")
++glob.glob("src/sgl-kernel/csrc/ck_extensions/gemm_a8w8/*.cu")
 
 cxx_flags = ["-O3"]
 libraries = ["hiprtc", "amdhip64", "c10", "torch", "torch_python"]
