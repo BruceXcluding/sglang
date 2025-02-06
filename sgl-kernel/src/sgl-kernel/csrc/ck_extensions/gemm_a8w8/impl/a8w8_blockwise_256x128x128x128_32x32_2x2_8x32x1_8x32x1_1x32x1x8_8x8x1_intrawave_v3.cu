@@ -32,6 +32,6 @@ a8w8_blockwise_256x128x128x128_32x32_2x2_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawave_
     S<8, 8, 1>,
     ck::BlockGemmPipelineScheduler::Intrawave,
     ck::BlockGemmPipelineVersion::v3,
-    ck::tensor_operation::device::GemmSpecialization::MKPadding>;
+    ck::tensor_operation::device::GemmSpecialization::MNKPadding>;
   return gemm_a8w8_blockwise_impl<DeviceGemmInstance>(XQ, WQ, x_scale, w_scale, Y);
 }
