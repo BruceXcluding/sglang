@@ -1,12 +1,22 @@
+// SPDX-License-Identifier: MIT
+// Copyright (c) 2024, Advanced Micro Devices, Inc. All rights reserved.
+
 #include "gemm_a8w8_block_common.cuh"
 #include "gemm_a8w8_block_manifest.h"
 #include "gemm_a8w8_block_lookup.h"
 
 BlockwiseKernel blockwise_heuristic_dispatch(int M, int N, int K) {
   // Apply shape heuristics to find a suitable kernel implementation.
-  /* TODO: add support for DeepSeek-v3 Tuning Config  */
-  // return a8w8_blockwise_64x16x16x128_16x16_1x1_8x8x1_8x8x1_1x16x1x4_4x4x1_1x1_interwave_v3<DEDataType, ABDataType>;
-  return nullptr;
+  if (N < 2048){
+    // Special case for small N
+    return a8w8_blockwise_256x64x128x128_32x32_1x2_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawave_v3;
+  } else if (K < 1024) {
+    // Special case for small K
+    return a8w8_blockwise_128x16x32x128_16x16_1x1_8x16x1_8x16x1_1x16x1x8_4x4x1_intrawave_v1; 
+  } else {
+    // Fallback Large kernel
+    return a8w8_blockwise_256x128x128x128_32x32_2x2_8x32x1_8x32x1_1x32x1x8_8x8x1_intrawave_v3;
+  }
 }
 
 // Helper function to return the next largest power of 2

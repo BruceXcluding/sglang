@@ -150,7 +150,6 @@ __forceinline__ torch::Tensor gemm_a8w8_blockwise_impl(
     int StrideB = WQ.stride(-2);
     int StrideE = N;
 
-    // TODO: fix me
     auto device_gemm = DeviceGemmInstance{};
     auto invoker = device_gemm.MakeInvoker();
 
