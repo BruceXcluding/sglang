@@ -60,6 +60,11 @@ torch::Tensor fp8_scaled_mm(const torch::Tensor& mat_a, const torch::Tensor& mat
                             const torch::Tensor& scales_b, const torch::Dtype& out_dtype,
                             const c10::optional<torch::Tensor>& bias);
 
+// gemm_a8w8_block
+torch::Tensor gemm_a8w8_block(torch::Tensor& XQ, torch::Tensor& WQ,
+                              torch::Tensor& x_scale, torch::Tensor& w_scale,
+                              torch::Tensor& Y);
+                                 
 // lightning_attention_decode
 void lightning_attention_decode(const torch::Tensor& q, const torch::Tensor& k, const torch::Tensor& v,
                                 const torch::Tensor& past_kv, const torch::Tensor& slope, torch::Tensor output,
@@ -143,7 +148,3 @@ void build_tree_kernel_efficient(at::Tensor parent_list, at::Tensor selected_ind
 void build_tree_kernel(at::Tensor parent_list, at::Tensor selected_index, at::Tensor verified_seq_len,
                        at::Tensor tree_mask, at::Tensor positions, at::Tensor retrive_index, int64_t topk,
                        int64_t depth, int64_t draft_token_num)
-// gemm_a8w8_block
-torch::Tensor gemm_a8w8_block(torch::Tensor& XQ, torch::Tensor& WQ,
-                                 torch::Tensor& x_scale, torch::Tensor& w_scale,
-                                 torch::Tensor& Y);

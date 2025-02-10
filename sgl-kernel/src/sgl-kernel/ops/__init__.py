@@ -136,6 +136,10 @@ def fp8_scaled_mm(mat_a, mat_b, scales_a, scales_b, out_dtype, bias=None):
     )
 
 
+def gemm_a8w8_block(XQ, WQ, x_scale, w_scale, Y):
+    return torch.ops.sgl_kernels.gemm_a8w8_block(XQ, WQ, x_scale, w_scale, Y)
+
+
 def lightning_attention_decode(q, k, v, past_kv, slope, output, new_kv):
     torch.ops.sgl_kernels.lightning_attention_decode(
         q, k, v, past_kv, slope, output, new_kv
@@ -579,6 +583,3 @@ def build_tree_kernel(
             depth,
             draft_token_num,
         )
-
-def gemm_a8w8_block(XQ, WQ, x_scale, w_scale, Y):
-    return torch.ops.sgl_kernels.gemm_a8w8_block(XQ, WQ, x_scale, w_scale, Y)
