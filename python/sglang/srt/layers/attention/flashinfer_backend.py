@@ -947,7 +947,7 @@ class FlashInferMultiStepDraftBackend:
             triton.next_power_of_2(bs),
         )
 
-        for i in range(self.speculative_num_steps):
+        for i in range(self.speculative_num_steps - 1):
             forward_batch.spec_info.kv_indptr = self.kv_indptr[i, : bs + 1]
             forward_batch.spec_info.kv_indices = kv_indices_buffer[i][
                 : seq_lens_sum * self.topk + bs * (i + 1)
@@ -1076,21 +1076,6 @@ def should_use_tensor_core(
     env_override = os.environ.get("SGLANG_FLASHINFER_USE_TENSOR_CORE")
     if env_override is not None:
         return env_override.lower() == "true"
-
-    # Try to use _grouped_size_compiled_for_decode_kernels if available
-    # This is for flashinfer <=0.1.6. Otherwise, there is an accuracy bug
-    try:
-        from flashinfer.decode import _grouped_size_compiled_for_decode_kernels
-
-        if not _grouped_size_compiled_for_decode_kernels(
-            num_attention_heads,
-            num_kv_heads,
-        ):
-            return True
-        else:
-            return False
-    except (ImportError, AttributeError):
-        pass
 
     # Calculate GQA group size
     gqa_group_size = num_attention_heads // num_kv_heads
