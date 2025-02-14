@@ -140,6 +140,7 @@ class ServerArgs:
     disable_jump_forward: bool = False
     disable_cuda_graph: bool = False
     disable_cuda_graph_padding: bool = False
+    enable_nccl_nvls: bool = False
     disable_outlines_disk_cache: bool = False
     disable_custom_all_reduce: bool = False
     disable_mla: bool = False
@@ -166,6 +167,8 @@ class ServerArgs:
     enable_custom_logit_processor: bool = False
     tool_call_parser: str = None
     enable_hierarchical_cache: bool = False
+
+    enable_flashinfer_mla: bool = False
 
     def __post_init__(self):
         # Set missing default values
@@ -692,6 +695,11 @@ class ServerArgs:
             default=ServerArgs.grammar_backend,
             help="Choose the backend for grammar-guided decoding.",
         )
+        parser.add_argument(
+            "--enable-flashinfer-mla",
+            action="store_true",
+            help="Enable FlashInfer MLA optimization",
+        )
 
         # Speculative decoding
         parser.add_argument(
@@ -782,6 +790,11 @@ class ServerArgs:
             "--disable-cuda-graph-padding",
             action="store_true",
             help="Disable cuda graph when padding is needed. Still uses cuda graph when padding is not needed.",
+        )
+        parser.add_argument(
+            "--enable-nccl-nvls",
+            action="store_true",
+            help="Enable NCCL NVLS for prefill heavy requests when available.",
         )
         parser.add_argument(
             "--disable-outlines-disk-cache",
