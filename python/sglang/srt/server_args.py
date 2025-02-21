@@ -821,6 +821,11 @@ class ServerArgs:
             help="Enabling data parallelism for attention and tensor parallelism for FFN. The dp size should be equal to the tp size. Currently only DeepSeek-V2 is supported.",
         )
         parser.add_argument(
+            "--enable-dp-linear",
+            action="store_true",
+            help="Enabling data parallelism for MLA linear.",
+        )
+        parser.add_argument(
             "--enable-ep-moe",
             action="store_true",
             help="Enabling expert parallelism for moe. The ep size is equal to the tp size.",
