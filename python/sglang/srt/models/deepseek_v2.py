@@ -527,7 +527,7 @@ class DeepseekV2AttentionMLA(nn.Module):
             return self.forward_normal(positions, hidden_states, forward_batch)
         else:
             if is_hip_:
-                if os.getenv("SGLANG_ROCM_FUSED_DECODE_MLA") == "1":
+                if os.getenv("SGLANG_ROCM_FUSED_DECODE_MLA") == "1" and forward_batch.forward_mode.is_decode():
                     return self.forward_absorb_fused_mla_rope(positions, hidden_states, forward_batch)
                 else:
                     return self.forward_absorb(positions, hidden_states, forward_batch)
