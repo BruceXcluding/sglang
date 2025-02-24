@@ -17,8 +17,6 @@ from sglang.srt.layers.moe.topk import select_experts
 from sglang.srt.layers.quantization.fp8_kernel import per_token_group_quant_fp8
 from sglang.srt.utils import direct_register_custom_op, get_device_name, is_hip
 
-import aiter
-from aiter.fused_moe_bf16_asm import moe_sorting_ck
 
 is_hip_flag = is_hip()
 
@@ -851,66 +849,68 @@ def fused_experts(
     block_shape: Optional[List[int]] = None,
 ):
 
-    E = w1.shape[0]
-    topk = topk_ids.shape[1]
-    model_dim = w1.shape[-1]
-    dtype = hidden_states.dtype
-    scale_blk_k = block_shape[1]
+    if is_hip_flag and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1":
+        import aiter
+        from aiter.jused_moe_bf16_asm import moe_sorting_ck
+        E = w1.shape[0]
+        topk = topk_ids.shape[1]
+        model_dim = w1.shape[-1]
+        dtype = hidden_states.dtype
+        scale_blk_k = block_shape[1]
 
-    sorted_token_ids, sorted_weight_buf, sorted_expert_ids, num_valid_ids, out_asm = moe_sorting_ck(topk_ids, topk_weights, E,
-                                                                                                    model_dim, dtype)
-    a1, a1_scale = per_token_group_quant_fp8(hidden_states, scale_blk_k)
-    aiter.fmoe_fp8_blockscale_g1u1(out_asm, 
-                                    a1, 
-                                    w1, 
-                                    w2, 
-                                    sorted_token_ids,
-                                    sorted_weight_buf,
-                                    sorted_expert_ids, 
-                                    num_valid_ids,
-                                    topk,
-                                    w1_scale.view(E, -1),
-                                    w2_scale.view(E, -1),
-                                    a1_scale.t().contiguous(),
-                                    block_shape[0], 
-                                    block_shape[1],
-                                    None)
-    return out_asm
-
-
-    if inplace:
-        torch.ops.sglang.inplace_fused_experts(
-            hidden_states,
-            w1,
-            w2,
-            topk_weights,
-            topk_ids,
-            activation,
-            use_fp8_w8a8,
-            use_int8_w8a16,
-            w1_scale,
-            w2_scale,
-            a1_scale,
-            a2_scale,
-            block_shape,
-        )
-        return hidden_states
+        sorted_token_ids, sorted_weight_buf, sorted_expert_ids, num_valid_ids, out_asm = moe_sorting_ck(topk_ids, topk_weights, E,
+                                                                                                        model_dim, dtype)
+        a1, a1_scale = per_token_group_quant_fp8(hidden_states, scale_blk_k)
+        aiter.fmoe_fp8_blockscale_g1u1(out_asm, 
+                                        a1, 
+                                        w1, 
+                                        w2, 
+                                        sorted_token_ids,
+                                        sorted_weight_buf,
+                                        sorted_expert_ids, 
+                                        num_valid_ids,
+                                        topk,
+                                        w1_scale.view(E, -1),
+                                        w2_scale.view(E, -1),
+                                        a1_scale.t().contiguous(),
+                                        block_shape[0], 
+                                        block_shape[1],
+                                        None)
+        return out_asm
     else:
-        return torch.ops.sglang.outplace_fused_experts(
-            hidden_states,
-            w1,
-            w2,
-            topk_weights,
-            topk_ids,
-            activation,
-            use_fp8_w8a8,
-            use_int8_w8a16,
-            w1_scale,
-            w2_scale,
-            a1_scale,
-            a2_scale,
-            block_shape,
-        )
+        if inplace:
+            torch.ops.sglang.inplace_fused_experts(
+                hidden_states,
+                w1,
+                w2,
+                topk_weights,
+                topk_ids,
+                activation,
+                use_fp8_w8a8,
+                use_int8_w8a16,
+                w1_scale,
+                w2_scale,
+                a1_scale,
+                a2_scale,
+                block_shape,
+            )
+            return hidden_states
+        else:
+            return torch.ops.sglang.outplace_fused_experts(
+                hidden_states,
+                w1,
+                w2,
+                topk_weights,
+                topk_ids,
+                activation,
+                use_fp8_w8a8,
+                use_int8_w8a16,
+                w1_scale,
+                w2_scale,
+                a1_scale,
+                a2_scale,
+                block_shape,
+            )
 
 
 def fused_experts_impl(

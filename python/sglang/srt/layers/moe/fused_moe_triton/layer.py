@@ -587,10 +587,12 @@ class FusedMoE(torch.nn.Module):
     def forward(self, hidden_states: torch.Tensor, router_logits: torch.Tensor):
         assert self.quant_method is not None
 
-        if not self.aiter_shuffle:
-            self.w13_weight.data = shuffle_weight(self.w13_weight, (16, 16))
-            self.w2_weight.data = shuffle_weight(self.w2_weight, (16, 16))
-            self.aiter_shuffle = True
+        if is_hip_ and get_bool_env_var("SGLANG_ROCM_AITER_BLOCK_MOE"):
+            if not self.aiter_shuffle:
+                self.w13_weight.data = shuffle_weight(self.w13_weight, (16, 16))
+                self.w2_weight.data = shuffle_weight(self.w2_weight, (16, 16))
+                self.aiter_shuffle = True
+
         # Matrix multiply.
         final_hidden_states = self.quant_method.apply(
             layer=self,
