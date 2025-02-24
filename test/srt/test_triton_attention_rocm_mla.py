@@ -6,11 +6,13 @@ import torch
 from sglang.srt.layers.attention.triton_ops.decode_attention import (
     decode_attention_fwd_grouped,
 )
+from sglang.srt.layers.attention.triton_ops.rocm_mla_decode_rope1 import (
+    decode_attention_fwd_grouped_rope,
+)
 
-from sglang.srt.layers.attention.triton_ops.rocm_mla_decode_rope1 import decode_attention_fwd_grouped_rope
-
-device = 'cuda'
+device = "cuda"
 B = 1235
+
 
 class TestTritonAttentionMLA(unittest.TestCase):
 
@@ -44,17 +46,48 @@ class TestTritonAttentionMLA(unittest.TestCase):
         sm_scale = 0.1352337788608801
         logit_cap = 0.0
 
-        decode_attention_fwd_grouped(q_input, k_buffer, v_buffer, o, kv_indptr, kv_indices, attn_logits, num_kv_splits, sm_scale, logit_cap) 
+        decode_attention_fwd_grouped(
+            q_input,
+            k_buffer,
+            v_buffer,
+            o,
+            kv_indptr,
+            kv_indices,
+            attn_logits,
+            num_kv_splits,
+            sm_scale,
+            logit_cap,
+        )
         o_grouped = torch.randn(B, 16, 512, device=device, dtype=torch.bfloat16)
-        attn_logits_grouped = torch.empty(B, 16, 16, 513, dtype=torch.float32, device=device)
-        decode_attention_fwd_grouped_rope(q_input, k_buffer, v_buffer, o_grouped, kv_indptr, kv_indices, k_pe_output, kv_lora_rank,
-                            rotary_dim, cos_sin_cache, positions, attn_logits_grouped, num_kv_splits, sm_scale, logit_cap, use_rope=True, is_neox_style=False)
+        attn_logits_grouped = torch.empty(
+            B, 16, 16, 513, dtype=torch.float32, device=device
+        )
+        decode_attention_fwd_grouped_rope(
+            q_input,
+            k_buffer,
+            v_buffer,
+            o_grouped,
+            kv_indptr,
+            kv_indices,
+            k_pe_output,
+            kv_lora_rank,
+            rotary_dim,
+            cos_sin_cache,
+            positions,
+            attn_logits_grouped,
+            num_kv_splits,
+            sm_scale,
+            logit_cap,
+            use_rope=True,
+            is_neox_style=False,
+        )
         cos_sim = torch.nn.functional.cosine_similarity(
             o.flatten(), o_grouped.flatten(), dim=0
         )
         print(cos_sim.item())
         self.assertTrue(cos_sim.item() > 0.99)
         self.assertTrue(torch.allclose(o, o_grouped, atol=3e-2))
+
 
 if __name__ == "__main__":
     unittest.main()

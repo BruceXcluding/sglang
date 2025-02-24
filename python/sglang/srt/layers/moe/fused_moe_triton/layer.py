@@ -26,6 +26,7 @@ else:
     fused_experts = None  # type: ignore
 
 import logging
+
 from aiter.ops.shuffle import shuffle_weight
 
 is_hip_ = is_hip()
