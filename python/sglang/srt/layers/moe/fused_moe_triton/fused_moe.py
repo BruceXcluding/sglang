@@ -850,7 +850,7 @@ def fused_experts(
 
     if is_hip_flag and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1":
         import aiter
-        from aiter.jused_moe_bf16_asm import moe_sorting_ck
+        from aiter.fused_moe_bf16_asm import moe_sorting_ck
 
         E = w1.shape[0]
         topk = topk_ids.shape[1]
