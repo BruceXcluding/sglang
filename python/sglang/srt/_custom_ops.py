@@ -142,7 +142,7 @@ else:
             aiter_custom_ar.register_graph_buffers(fa, handles, offsets)
 
         def allocate_meta_buffer(size: int) -> torch.Tensor:
-            return aiter_custom_ar.ops.allocate_meta_buffer(size)
+            return aiter_custom_ar.allocate_meta_buffer(size)
 
         def get_meta_buffer_ipc_handle(inp: torch.Tensor) -> torch.Tensor:
             return aiter_custom_ar.get_meta_buffer_ipc_handle(inp)
