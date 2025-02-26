@@ -289,6 +289,7 @@ class FusedMoE(torch.nn.Module):
         self.custom_routing_function = custom_routing_function
         self.correction_bias = correction_bias
         self.activation = activation
+        self.routed_scaling_factor = routed_scaling_factor
 
         if quant_config is None:
             self.quant_method: Optional[QuantizeMethodBase] = (
@@ -301,6 +302,7 @@ class FusedMoE(torch.nn.Module):
         self.quant_method.create_weights(
             layer=self,
             num_experts=num_experts,
+            num_shared_experts=num_shared_experts,
             hidden_size=hidden_size,
             # FIXME: figure out which intermediate_size to use
             intermediate_size=self.intermediate_size_per_partition,
@@ -639,6 +641,27 @@ class FusedMoE(torch.nn.Module):
                 shard_id,
             )
             for expert_id in range(num_experts)
+            for shard_id, weight_name in [
+                ("w1", ckpt_gate_proj_name),
+                ("w2", ckpt_down_proj_name),
+                ("w3", ckpt_up_proj_name),
+            ]
+        ] + [
+            (
+                (
+                    "experts.w13_"
+                    if weight_name in [ckpt_gate_proj_name, ckpt_up_proj_name]
+                    else "experts.w2_"
+                ),
+                (
+                    f"shared_experts.{expert_id}.{weight_name}."
+                    if num_shared_experts >= 2
+                    else f"shared_experts.{weight_name}."
+                ),
+                -num_shared_experts + expert_id,
+                shard_id,
+            )
+            for expert_id in range(num_shared_experts)
             for shard_id, weight_name in [
                 ("w1", ckpt_gate_proj_name),
                 ("w2", ckpt_down_proj_name),
