@@ -15,6 +15,8 @@ _is_cuda = torch.cuda.is_available() and torch.version.cuda
 if _is_cuda:
     from sgl_kernel import fp8_blockwise_scaled_mm
 
+ck_block_gemm = bool(int(os.getenv("CK_BLOCK_GEMM", "0")))
+
 
 def normalize_e4m3fn_to_e4m3fnuz(
     weight: torch.Tensor,
@@ -78,6 +80,15 @@ def apply_w8a8_block_fp8_linear(
         output = fp8_blockwise_scaled_mm(
             q_input, weight.T, x_scale, weight_scale.T, out_dtype=input.dtype
         )
+    elif is_hip_ and ck_block_gemm:
+        q_input, x_scale = per_token_group_quant_fp8(input_2d, block_size[1])
+        from aiter import gemm_a8w8_blockscale
+        output = torch.zeros(
+            [q_input.shape[0], weight.shape[0]],
+            dtype=input.dtype,
+            device=q_input.device,
+        )
+        gemm_a8w8_blockscale(q_input, weight, x_scale, weight_scale, output)
     else:
         q_input, x_scale = per_token_group_quant_fp8(
             input_2d, block_size[1], column_major_scales=False
