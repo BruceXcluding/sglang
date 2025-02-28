@@ -55,13 +55,14 @@ def apply_w8a8_block_fp8_linear(
     q_input, x_scale = per_token_group_quant_fp8(input_2d, block_size[1])
     if is_hip_ and ck_block_gemm:
         from aiter import gemm_a8w8_blockscale
+
         output = torch.zeros(
             [q_input.shape[0], weight.shape[0]],
             dtype=input.dtype,
             device=q_input.device,
         )
         gemm_a8w8_blockscale(q_input, weight, x_scale, weight_scale, output)
-    else: 
+    else:
         output = w8a8_block_fp8_matmul(
             q_input, weight, x_scale, weight_scale, block_size, output_dtype=input.dtype
         )

@@ -1,7 +1,7 @@
 # Adapted from https://github.com/vllm-project/vllm/blob/v0.6.4.post1/vllm/model_executor/layers/quantization/fp8.py
 
-import os
 import logging
+import os
 from typing import Any, Callable, Dict, List, Optional
 
 import torch
@@ -456,7 +456,7 @@ class Fp8MoEMethod:
         **extra_weight_attrs,
     ):
         if is_hip_ and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1":
-            num_experts += num_shared_experts        
+            num_experts += num_shared_experts
         from sglang.srt.layers.moe.fused_moe_triton import FusedMoeWeightScaleSupported
 
         if self.quant_config.is_checkpoint_fp8_serialized:
