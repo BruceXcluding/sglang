@@ -152,7 +152,11 @@ class DeepseekV2MoE(nn.Module):
         MoEImpl = EPMoE if global_server_args_dict["enable_ep_moe"] else FusedMoE
         self.experts = MoEImpl(
             num_experts=config.n_routed_experts,
-            num_shared_experts=config.n_shared_experts if os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1" and is_hip_ else 0,
+            num_shared_experts=(
+                config.n_shared_experts
+                if os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1" and is_hip_
+                else 0
+            ),
             top_k=config.num_experts_per_tok,
             hidden_size=config.hidden_size,
             intermediate_size=config.moe_intermediate_size,
@@ -165,7 +169,10 @@ class DeepseekV2MoE(nn.Module):
             routed_scaling_factor=self.routed_scaling_factor,
         )
 
-        if config.n_shared_experts is not None and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") != "1":
+        if (
+            config.n_shared_experts is not None
+            and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") != "1"
+        ):
             intermediate_size = config.moe_intermediate_size * config.n_shared_experts
             self.shared_experts = DeepseekV2MLP(
                 hidden_size=config.hidden_size,
@@ -1007,10 +1014,7 @@ class DeepseekV2Model(nn.Module):
     ) -> torch.Tensor:
         hidden_states = self.embed_tokens(input_ids)
         residual = None
-        if (
-            is_hip_
-            and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1"
-        ):
+        if is_hip_ and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1":
             model_dim = hidden_states.shape[-1]
             num_tokens = hidden_states.view(-1, model_dim).shape[0]
             if not self.aiter_init:
@@ -1061,9 +1065,7 @@ class DeepseekV2Model(nn.Module):
                     device="cuda",
                 )
                 self.ns_topk_weights, self.s_topk_weights = (
-                    self.total_topk_weights.split(
-                        [top_k, num_topK_pad_experts], dim=1
-                    )
+                    self.total_topk_weights.split([top_k, num_topK_pad_experts], dim=1)
                 )
                 shared_E_score = 1.0
                 self.s_topk_weights.fill_(shared_E_score)
@@ -1140,7 +1142,11 @@ class DeepseekV2ForCausalLM(nn.Module):
             ckpt_down_proj_name="down_proj",
             ckpt_up_proj_name="up_proj",
             num_experts=self.config.n_routed_experts,
-            num_shared_experts=self.config.n_shared_experts if os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1" and is_hip_ else 0,
+            num_shared_experts=(
+                self.config.n_shared_experts
+                if os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1" and is_hip_
+                else 0
+            ),
         )
 
         params_dict = dict(self.named_parameters())
@@ -1169,8 +1175,11 @@ class DeepseekV2ForCausalLM(nn.Module):
                 # for mlp.experts[0].gate_gate_up_proj, which breaks load.
                 if ("mlp.experts." in name) and name not in params_dict:
                     continue
-                if is_hip() and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1" \
-                    and "mlp.shared_experts" in name:
+                if (
+                    is_hip()
+                    and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1"
+                    and "mlp.shared_experts" in name
+                ):
                     continue
                 name = name.replace(weight_name, param_name)
                 # Skip loading extra bias for GPTQ models.

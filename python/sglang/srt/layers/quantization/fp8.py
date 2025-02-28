@@ -1,7 +1,7 @@
 # Adapted from https://github.com/vllm-project/vllm/blob/v0.6.4.post1/vllm/model_executor/layers/quantization/fp8.py
 
-import os
 import logging
+import os
 from typing import Any, Callable, Dict, List, Optional
 
 import torch
@@ -797,8 +797,7 @@ class Fp8MoEMethod:
             layer.ns_topk_weights[:token] = topk_weights * layer.routed_scaling_factor
             layer.ns_topk_ids[:token] = topk_ids
             topk_ids = layer.total_topk_ids[:token]
-            topk_weights = layer.total_topk_weights[:token]            
-            
+            topk_weights = layer.total_topk_weights[:token]
 
         if is_hip_ and get_bool_env_var("CK_MOE"):
             import aiter

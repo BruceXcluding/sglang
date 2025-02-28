@@ -13,14 +13,20 @@
 # ==============================================================================
 
 """Inference-only DeepSeek NextN Speculative Decoding."""
+import os
 from typing import Iterable, Optional, Tuple
 
-import os
 import torch
 from torch import nn
 from transformers import PretrainedConfig
 from vllm import _custom_ops as ops
 
+from sglang.srt.distributed import (
+    get_tensor_model_parallel_rank,
+    get_tensor_model_parallel_world_size,
+    get_tp_group,
+    tensor_model_parallel_all_reduce,
+)
 from sglang.srt.layers.layernorm import RMSNorm
 from sglang.srt.layers.linear import ReplicatedLinear
 from sglang.srt.layers.logits_processor import LogitsProcessor
@@ -40,12 +46,7 @@ from sglang.srt.model_executor.forward_batch_info import ForwardBatch
 from sglang.srt.model_loader.weight_utils import default_weight_loader
 from sglang.srt.models.deepseek_v2 import DeepseekV2DecoderLayer, DeepseekV3ForCausalLM
 from sglang.srt.utils import is_hip
-from sglang.srt.distributed import (
-    get_tensor_model_parallel_rank,
-    get_tensor_model_parallel_world_size,
-    get_tp_group,
-    tensor_model_parallel_all_reduce,
-)
+
 is_hip_ = is_hip()
 
 
@@ -157,7 +158,6 @@ class DeepseekModelNextN(nn.Module):
                 mlp.experts.total_topk_ids = self.total_topk_ids
                 mlp.experts.ns_topk_weights = self.ns_topk_weights
                 mlp.experts.ns_topk_ids = self.ns_topk_ids
-        
 
         hidden_states = self.eh_proj(
             torch.cat(
