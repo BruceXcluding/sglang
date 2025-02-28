@@ -9,13 +9,15 @@ from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 import torch
 import torch.library
 
-from sglang.srt.utils import is_hpu
+from sglang.srt.utils import is_hip, is_hpu
+
+is_hip_ = is_hip()
 
 logger = logging.getLogger(__name__)
 use_vllm_custom_allreduce = os.environ.get("USE_VLLM_CUSTOM_ALLREDUCE", default=True)
 
 if not is_hpu():
-    if use_vllm_custom_allreduce:
+    if use_vllm_custom_allreduce and not is_hip_:
         try:
             import vllm._C
         except ImportError as e:
@@ -56,7 +58,7 @@ def hint_on_error(fn):
     return wrapper
 
 
-if use_vllm_custom_allreduce:
+if use_vllm_custom_allreduce and not is_hip():
     # custom ar
     def init_custom_ar(
         ipc_tensors: List[torch.Tensor],
@@ -93,6 +95,56 @@ if use_vllm_custom_allreduce:
         fa: int, handles: List[List[int]], offsets: List[List[int]]
     ) -> None:
         torch.ops._C_custom_ar.register_graph_buffers(fa, handles, offsets)
+
+elif use_vllm_custom_allreduce and is_hip_:
+
+    import aiter
+    import aiter.ops.custom_all_reduce as aiter_custom_ar
+
+    def init_custom_ar(
+        meta: torch.Tensor,
+        rank_data: torch.Tensor,
+        handles: List[str],
+        offsets: List[int],
+        rank: int,
+        full_nvlink: bool,
+    ) -> int:
+        return aiter_custom_ar.init_custom_ar(
+            meta, rank_data, handles, offsets, rank, full_nvlink
+        )
+
+    def all_reduce_reg(fa: int, inp: torch.Tensor, out: torch.Tensor) -> None:
+        aiter_custom_ar.all_reduce_reg(fa, inp, out)
+
+    def all_reduce_unreg(
+        fa: int, inp: torch.Tensor, reg_buffer: torch.Tensor, out: torch.Tensor
+    ) -> None:
+        aiter_custom_ar.all_reduce_unreg(fa, inp, reg_buffer, out)
+
+    def dispose(fa: int) -> None:
+        aiter_custom_ar.dispose(fa)
+
+    def meta_size() -> int:
+        return aiter_custom_ar.meta_size()
+
+    def register_buffer(
+        fa: int, t: torch.Tensor, handles: List[str], offsets: List[int]
+    ) -> None:
+        return aiter_custom_ar.register_buffer(fa, t, handles, offsets)
+
+    def get_graph_buffer_ipc_meta(fa: int) -> Tuple[torch.Tensor, List[int]]:
+        return aiter_custom_ar.get_graph_buffer_ipc_meta(fa)
+
+    def register_graph_buffers(
+        fa: int, handles: List[str], offsets: List[List[int]]
+    ) -> None:
+        aiter_custom_ar.register_graph_buffers(fa, handles, offsets)
+
+    def allocate_meta_buffer(size: int) -> torch.Tensor:
+        return aiter_custom_ar.allocate_meta_buffer(size)
+
+    def get_meta_buffer_ipc_handle(inp: torch.Tensor) -> torch.Tensor:
+        return aiter_custom_ar.get_meta_buffer_ipc_handle(inp)
 
 else:
     # custom ar
