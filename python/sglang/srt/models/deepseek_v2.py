@@ -32,7 +32,7 @@ from sglang.srt.distributed import (
     tensor_model_parallel_all_reduce,
 )
 from sglang.srt.layers.activation import SiluAndMul
-from sglang.srt.layers.attention.triton_ops.rocm_mla_decode_rope1 import (
+from sglang.srt.layers.attention.triton_ops.rocm_mla_decode_rope import (
     decode_attention_fwd_grouped_rope,
 )
 from sglang.srt.layers.layernorm import RMSNorm
