@@ -20,6 +20,7 @@ It supports page size = 1.
 # https://github.com/ModelTC/lightllm/blob/96353e868a840db4d103138caf15ed9dbea8c186/lightllm/models/deepseek2/triton_kernel/gqa_flash_decoding_stage1.py
 # https://github.com/ModelTC/lightllm/blob/96353e868a840db4d103138caf15ed9dbea8c186/lightllm/models/deepseek2/triton_kernel/gqa_flash_decoding_stage2.py
 
+import os
 import logging
 
 import triton
@@ -651,8 +652,22 @@ def decode_attention_fwd(
             sm_scale,
             logit_cap,
         )
+    elif is_hip_ and os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
+        from aiter.mla import mla_decode_fwd
+        mla_decode_fwd(
+            q,
+            k_buffer.view(-1, 1, 1, q.shape[-1]),
+            o,
+            kv_indptr,
+            kv_indices,
+            attn_logits,
+            sm_scale,
+            logit_cap,
+	    num_kv_splits,
+        )
+        k_buffer = k_buffer.reshape(-1, 1, q.shape[-1])
     else:
-        # GQA/MQA/MLA
+	    # GQA/MQA/MLA
         decode_attention_fwd_grouped(
             q,
             k_buffer,
