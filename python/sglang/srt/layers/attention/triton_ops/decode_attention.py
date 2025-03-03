@@ -663,7 +663,6 @@ def decode_attention_fwd(
             attn_logits,
             sm_scale,
             logit_cap,
-	    num_kv_splits,
         )
         k_buffer = k_buffer.reshape(-1, 1, q.shape[-1])
     else:
