@@ -27,6 +27,7 @@ import triton
 import triton.language as tl
 
 from sglang.srt.utils import is_hip
+from sglang.srt.managers.schedule_batch import global_server_args_dict
 
 is_hip_ = is_hip()
 
@@ -655,7 +656,7 @@ def decode_attention_fwd(
             sm_scale,
             logit_cap,
         )
-    elif os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
+    elif os.getenv("SGLANG_ROCM_AITER_FMLA") == "1" and not global_server_args_dict["disable_mla"]:
         from aiter.mla import mla_decode_fwd
         mla_decode_fwd(
             q,
