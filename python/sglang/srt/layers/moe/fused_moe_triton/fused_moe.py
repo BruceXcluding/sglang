@@ -879,7 +879,7 @@ def fused_experts(
     block_shape: Optional[List[int]] = None,
     expert_mask: torch.Tensor = None,
 ):
-    if is_hip_flag and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1":
+    if is_hip_flag and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1" and block_shape is not None:
         import aiter
         from aiter.fused_moe_bf16_asm import moe_sorting_ck
 
