@@ -114,8 +114,9 @@ class TritonAttnBackend(AttentionBackend):
                 device=self.device,
             )
 
-            if os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
-                attn_logits = torch.ones(bs, dtype=torch.int)
+            # TODO fix acc
+	    #if os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
+            #    attn_logits = torch.ones(bs, dtype=torch.int)
 
             qo_indptr = None
             custom_mask = None
