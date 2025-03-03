@@ -652,7 +652,7 @@ def decode_attention_fwd(
             sm_scale,
             logit_cap,
         )
-    elif is_hip_ and os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
+    elif os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
         from aiter.mla import mla_decode_fwd
         mla_decode_fwd(
             q,

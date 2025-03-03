@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
+import os
 import torch
 import triton
 
@@ -112,6 +113,9 @@ class TritonAttnBackend(AttentionBackend):
                 dtype=torch.float32,
                 device=self.device,
             )
+
+            if os.getenv("SGLANG_ROCM_AITER_FMLA") == "1":
+                attn_logits = torch.ones(bs, dtype=torch.int)
 
             qo_indptr = None
             custom_mask = None
