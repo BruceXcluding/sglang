@@ -785,22 +785,17 @@ class Fp8EPMoEMethod(Fp8MoEMethod):
         custom_routing_function: Optional[Callable] = None,
     ) -> torch.Tensor:
         if is_hip_ and os.getenv("SGLANG_ROCM_AITER_BLOCK_MOE") == "1":
-            topk_weights, topk_ids = select_experts(
-                hidden_states=x,
-                router_logits=router_logits,
-                use_grouped_topk=use_grouped_topk,
-                top_k=top_k,
-                renormalize=renormalize,
-                topk_group=topk_group,
-                num_expert_group=num_expert_group,
-                custom_routing_function=custom_routing_function,
-                correction_bias=layer.correction_bias,
-            )
-
-            # TODO these can be removed when "select_experts" is inplaced op
+            import aiter
             token = x.shape[0]
-            layer.ns_topk_weights[:token] = topk_weights * layer.routed_scaling_factor
-            layer.ns_topk_ids[:token] = topk_ids
+            aiter.biased_grouped_topk(router_logits,
+                                      layer.correction_bias,
+                                      layer.ns_topk_weights[:token],
+                                      layer.ns_topk_ids[:token],
+                                      num_expert_group,
+                                      topk_group,
+                                      renormalize,
+                                      layer.routed_scaling_factor
+                                      )
             topk_ids = layer.total_topk_ids[:token]
             topk_weights = layer.total_topk_weights[:token]
 
