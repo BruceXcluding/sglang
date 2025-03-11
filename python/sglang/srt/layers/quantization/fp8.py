@@ -779,25 +779,33 @@ class Fp8MoEMethod:
         from sglang.srt.layers.moe.fused_moe_triton.fused_moe import fused_experts
         from sglang.srt.layers.moe.topk import select_experts
 
-        # Expert selection
-        topk_weights, topk_ids = select_experts(
-            hidden_states=x,
-            router_logits=router_logits,
-            use_grouped_topk=use_grouped_topk,
-            top_k=top_k,
-            renormalize=renormalize,
-            topk_group=topk_group,
-            num_expert_group=num_expert_group,
-            custom_routing_function=custom_routing_function,
-            correction_bias=correction_bias,
-        )
-
-        if is_hip_ and get_bool_env_var("SGLANG_ROCM_AITER_BLOCK_MOE"):
+        if is_hip_ and get_bool_env_var("SGLANG_ROCM_AITER_BLOCK_MOE") and correction_bias is not None:
+            import aiter
             token = x.shape[0]
-            layer.ns_topk_weights[:token] = topk_weights * layer.routed_scaling_factor
-            layer.ns_topk_ids[:token] = topk_ids
+            aiter.biased_grouped_topk(router_logits,
+                                      correction_bias,
+                                      layer.ns_topk_weights[:token],
+                                      layer.ns_topk_ids[:token],
+                                      num_expert_group,
+                                      topk_group,
+                                      renormalize,
+                                      layer.routed_scaling_factor)            
+            
             topk_ids = layer.total_topk_ids[:token]
             topk_weights = layer.total_topk_weights[:token]
+        else:
+            # Expert selection
+            topk_weights, topk_ids = select_experts(
+                hidden_states=x,
+                router_logits=router_logits,
+                use_grouped_topk=use_grouped_topk,
+                top_k=top_k,
+                renormalize=renormalize,
+                topk_group=topk_group,
+                num_expert_group=num_expert_group,
+                custom_routing_function=custom_routing_function,
+                correction_bias=correction_bias,
+            )
 
         if is_hip_ and get_bool_env_var("CK_MOE"):
             import aiter
