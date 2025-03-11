@@ -191,8 +191,6 @@ class DeepseekV2MoE(nn.Module):
     def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
         num_tokens, hidden_dim = hidden_states.shape
         hidden_states = hidden_states.view(-1, hidden_dim)
-        if self.n_shared_experts is not None:
-            shared_output = self.shared_experts(hidden_states)
         # router_logits: (num_tokens, n_experts)
         router_logits = self.gate(hidden_states)
         if is_hip_ and get_bool_env_var("CK_MOE"):
@@ -211,7 +209,7 @@ class DeepseekV2MoE(nn.Module):
             self.experts(hidden_states=hidden_states, router_logits=router_logits)
             * self.routed_scaling_factor
         )
-        if self.n_shared_experts is not None:
+        if shared_output is not None:
             final_hidden_states = final_hidden_states + shared_output
         if self.tp_size > 1:
             final_hidden_states = tensor_model_parallel_all_reduce(final_hidden_states)
@@ -1087,7 +1085,7 @@ class DeepseekV2Model(nn.Module):
                     [fake_expertid] * (num_shared_experts + 1)
                 ] * num_tokens
                 for i in range(tp_rank, num_tokens, tp_size):
-                    s_topk_ids_list[1] = shared_expert_ids
+                    s_topk_ids_list[i] = shared_expert_ids
                 self.s_topk_ids[:] = torch.tensor(
                     s_topk_ids_list, dtype=torch.int32, device="cuda"
                 )
@@ -1109,7 +1107,7 @@ class DeepseekV2Model(nn.Module):
                     mlp = self.layers[i].mlp
                     if not isinstance(mlp, DeepseekV2MoE):
                         continue
-                    mlp.experts.total_topk_weights = self.s_topk_weights
+                    mlp.experts.total_topk_weights = self.total_topk_weights
                     mlp.experts.total_topk_ids = self.total_topk_ids
                     mlp.experts.ns_topk_weights = self.ns_topk_weights
                     mlp.experts.ns_topk_ids = self.ns_topk_ids
