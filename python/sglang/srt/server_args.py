@@ -30,6 +30,7 @@ from sglang.srt.utils import (
     is_flashinfer_available,
     is_hip,
     is_port_available,
+    is_remote_url,
     is_valid_ipv6_address,
     nullable_str,
 )
@@ -220,6 +221,8 @@ class ServerArgs:
             else:
                 self.chunked_prefill_size = 8192
 
+        assert self.chunked_prefill_size % self.page_size == 0
+
         # Set cuda graph max batch size
         if self.cuda_graph_max_bs is None:
             # Based on detailed statistics, when serving TP1/TP2 models on lower-end GPUs with HBM<25G, you can either disable cuda graph or set `cuda_graph_max_bs` to a very small value to reduce the memory overhead of creating cuda graphs, with almost no impact on performance. However, when serving models with TP4 or TP8, we need to enable cuda graph to maintain high performance. In this case, we can set `cuda_graph_max_bs` to 80 (half of the default value 160) to reduce the memory overhead of creating cuda graphs. Looking at the logs from TP4 serving of qwen2-72b, a value of 80 is sufficient and can reduce the memory overhead of creating cuda graphs on lower-end GPUs compared to the original 160, avoiding OOM issues.
@@ -260,14 +263,14 @@ class ServerArgs:
 
         # Data parallelism attention
         if self.enable_dp_attention:
-            self.dp_size = self.tp_size
-            assert self.tp_size % self.dp_size == 0
-            self.chunked_prefill_size = self.chunked_prefill_size // 2
             self.schedule_conservativeness = self.schedule_conservativeness * 0.3
+            assert (
+                self.dp_size > 1
+            ), "Please set a dp-size > 1. You can use 1 < dp-size <= tp-size "
+            assert self.tp_size % self.dp_size == 0
+            self.chunked_prefill_size = self.chunked_prefill_size // self.dp_size
             logger.warning(
                 f"DP attention is enabled. The chunked prefill size is adjusted to {self.chunked_prefill_size} to avoid MoE kernel issues. "
-                f"The schedule conservativeness is adjusted to {self.schedule_conservativeness}. "
-                "Data parallel size is adjusted to be the same as tensor parallel size. "
             )
 
         # Speculative Decoding
@@ -293,6 +296,9 @@ class ServerArgs:
             self.load_format == "auto" or self.load_format == "gguf"
         ) and check_gguf_file(self.model_path):
             self.quantization = self.load_format = "gguf"
+
+        if is_remote_url(self.model_path):
+            self.load_format = "remote"
 
         # AMD-specific Triton attention KV splits default number
         if is_hip():
@@ -343,9 +349,11 @@ class ServerArgs:
                 "safetensors",
                 "npcache",
                 "dummy",
+                "sharded_state",
                 "gguf",
                 "bitsandbytes",
                 "layered",
+                "remote",
             ],
             help="The format of the model weights to load. "
             '"auto" will try to load the weights in the safetensors format '
@@ -771,7 +779,6 @@ class ServerArgs:
             "--speculative-eagle-topk",
             type=int,
             help="The number of tokens sampled from the draft model in eagle2 each step.",
-            choices=[1, 2, 4, 8],
             default=ServerArgs.speculative_eagle_topk,
         )
         parser.add_argument(
@@ -1087,6 +1094,9 @@ class PortArgs:
     # The port for nccl initialization (torch.dist)
     nccl_port: int
 
+    # The ipc filename for rpc call between Engine and Scheduler
+    rpc_ipc_name: str
+
     @staticmethod
     def init_new(server_args, dp_rank: Optional[int] = None) -> "PortArgs":
         port = server_args.port + random.randint(100, 1000)
@@ -1105,6 +1115,7 @@ class PortArgs:
                 scheduler_input_ipc_name=f"ipc://{tempfile.NamedTemporaryFile(delete=False).name}",
                 detokenizer_ipc_name=f"ipc://{tempfile.NamedTemporaryFile(delete=False).name}",
                 nccl_port=port,
+                rpc_ipc_name=f"ipc://{tempfile.NamedTemporaryFile(delete=False).name}",
             )
         else:
             # DP attention. Use TCP + port to handle both single-node and multi-node.
@@ -1130,6 +1141,7 @@ class PortArgs:
                 scheduler_input_ipc_name=f"tcp://{dist_init_host}:{scheduler_input_port}",
                 detokenizer_ipc_name=f"tcp://{dist_init_host}:{port_base + 1}",
                 nccl_port=port,
+                rpc_ipc_name=f"tcp://{dist_init_host}:{port_base + 2}",
             )
 
 
