@@ -575,19 +575,74 @@ class TritonAttnBackend(AttentionBackend):
             kv_last_page_lens = self.forward_metadata.kv_last_page_len
             qo_indptr = self.forward_metadata.qo_indptr
             K_Buffer = forward_batch.token_to_kv_pool.get_key_buffer(layer.layer_id)
-            
+            V_Buffer = forward_batch.token_to_kv_pool.get_value_buffer(layer.layer_id)
+            kv_lora_rank = V_Buffer.shape[-1]
+            qk_rope_head_dim = K_Buffer.shape[-1] - kv_lora_rank
+            qk_nope_head_dim = k.shape[-1] - qk_rope_head_dim
+            assert len(q.shape) == 3
+            assert len(k.shape) == 3
+            assert len(v.shape) == 3 
             if layer.tp_k_head_num != 1:
-                o = flash_attn_varlen_func(
-                    q,
-                    k,
-                    v,
-                    qo_indptr,
-                    qo_indptr,
-                    max_extend_len,
-                    max_extend_len,
-                    softmax_scale=layer.scaling,
-                    causal=True,
-                )
+                if kv_indices.shape[0] == 0:
+                    o = flash_attn_varlen_func(
+                        q,
+                        k,
+                        v,
+                        qo_indptr,
+                        qo_indptr,
+                        max_extend_len,
+                        max_extend_len,
+                        softmax_scale=layer.scaling,
+                        causal=True,
+                    )
+                elif layer.qk_head_dim != (kv_lora_rank + qk_rope_head_dim):
+                    cu_seqlens = qo_indptr + kv_indptr
+                    max_seqlen = max_prefix_extend_len
+                    K_Buffer = torch.index_select(K_Buffer, 0, kv_indices)
+                    kvc, k_pe = torch.split(
+                        K_Buffer, [kv_lora_rank, qk_rope_head_dim], dim=-1
+                    )
+                    kvprefix = layer.kv_b_proj(kvc.contiguous())[0]
+
+                    kvprefix = kvprefix.view(
+                        -1, layer.tp_k_head_num, qk_nope_head_dim + layer.v_head_dim
+                    )
+                    k_prefix, v_prefix = torch.split(
+                        kvprefix, [qk_nope_head_dim, layer.v_head_dim], dim=-1
+                    )
+                    k_prefix = torch.cat(
+                        [
+                            k_prefix,
+                            torch.broadcast_to(
+                                k_pe, (k_pe.shape[0], layer.tp_k_head_num, k_pe.shape[2])
+                            ),
+                        ],
+                        dim=-1,
+                    )
+                    assert (
+                        forward_batch.extend_prefix_lens.shape
+                        == forward_batch.extend_seq_lens.shape
+                    )
+                    k_prefix = torch.split(k_prefix, forward_batch.extend_prefix_lens_cpu)
+                    k_extend = torch.split(k, forward_batch.extend_seq_lens_cpu)
+                    assert len(k_prefix) == len(forward_batch.extend_prefix_lens_cpu)
+                    k = torch.cat([x for el in zip(k_prefix, k_extend) for x in el])
+                    v_prefix = torch.split(v_prefix, forward_batch.extend_prefix_lens_cpu)
+                    v_extend = torch.split(v, forward_batch.extend_seq_lens_cpu)
+                    v = torch.cat([x for el in zip(v_prefix, v_extend) for x in el])
+
+                    o = flash_attn_varlen_func(
+                        q,
+                        k,
+                        v,
+                        qo_indptr,
+                        cu_seqlens,
+                        max_extend_len,
+                        max_seqlen,
+                        softmax_scale=layer.scaling,
+                        causal=True,
+                    )
+                return o
             else:
                 token_num = forward_batch.extend_num_tokens
 
