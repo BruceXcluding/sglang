@@ -320,24 +320,22 @@ class TritonAttnBackend(AttentionBackend):
             attn_lse = None
             kv_last_page_len = torch.ones(bs, dtype=torch.int)
             max_extend_len = torch.max(forward_batch.extend_seq_lens).item()
-            max_prefix_extend_len = torch.max(
-                forward_batch.extend_seq_lens + forward_batch.extend_prefix_lens
-            ).item()
             num_kv_splits = None
             if _is_hip and get_bool_env_var("CK_MOE"):
                 max_prefix_extend_len = torch.max(
                     forward_batch.extend_seq_lens + forward_batch.extend_prefix_lens
                 ).item()
                 kv_indptr += qo_indptr
-                prefix_kv_indices = kv_indices
-                extend_kv_indices = forward_batch.out_cache_loc
-                prefix = torch.split(
-                    prefix_kv_indices, forward_batch.extend_prefix_lens_cpu
-                )
-                extend = torch.split(extend_kv_indices, forward_batch.extend_seq_lens_cpu)
-                kv_indices = torch.cat([x for el in zip(prefix, extend) for x in el]).to(
-                    torch.int
-                )
+                if sum(forward_batch.extend_prefix_lens_cpu) <= 160:
+                    prefix_kv_indices = kv_indices
+                    extend_kv_indices = forward_batch.out_cache_loc
+                    prefix = torch.split(
+                        prefix_kv_indices, forward_batch.extend_prefix_lens_cpu
+                    )
+                    extend = torch.split(extend_kv_indices, forward_batch.extend_seq_lens_cpu)
+                    kv_indices = torch.cat([x for el in zip(prefix, extend) for x in el]).to(
+                        torch.int
+                    )
 
         self.forward_metadata = ForwardMetadata(
             attn_logits,
@@ -583,6 +581,7 @@ class TritonAttnBackend(AttentionBackend):
             assert len(k.shape) == 3
             assert len(v.shape) == 3 
             if layer.tp_k_head_num != 1:
+                print("MHA_PREFILL CLINKED")
                 if kv_indices.shape[0] == 0:
                     o = flash_attn_varlen_func(
                         q,
@@ -595,9 +594,8 @@ class TritonAttnBackend(AttentionBackend):
                         softmax_scale=layer.scaling,
                         causal=True,
                     )
+                    return o
                 elif layer.qk_head_dim != (kv_lora_rank + qk_rope_head_dim):
-                    cu_seqlens = qo_indptr + kv_indptr
-                    max_seqlen = max_prefix_extend_len
                     K_Buffer = torch.index_select(K_Buffer, 0, kv_indices)
                     kvc, k_pe = torch.split(
                         K_Buffer, [kv_lora_rank, qk_rope_head_dim], dim=-1
@@ -636,14 +634,15 @@ class TritonAttnBackend(AttentionBackend):
                         k,
                         v,
                         qo_indptr,
-                        cu_seqlens,
+                        kv_indptr,
                         max_extend_len,
-                        max_seqlen,
+                        max_prefix_extend_len,
                         softmax_scale=layer.scaling,
                         causal=True,
                     )
-                return o
+                    return o
             else:
+                print("MLA_PREFILL CLINKED")
                 token_num = forward_batch.extend_num_tokens
 
                 mla_prefill_fwd(
@@ -659,7 +658,7 @@ class TritonAttnBackend(AttentionBackend):
                     layer.logit_cap,
                 )
                 K_Buffer = K_Buffer.view(-1, layer.tp_k_head_num, layer.qk_head_dim)
-            return o
+                return o
 
         self.extend_attention_fwd(
             q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),

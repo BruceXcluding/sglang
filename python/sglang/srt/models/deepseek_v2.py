@@ -687,7 +687,7 @@ class DeepseekV2AttentionMLA(nn.Module):
                 forward_batch.forward_mode.is_extend()
                 and not forward_batch.forward_mode.is_target_verify()
                 and not forward_batch.forward_mode.is_draft_extend()
-                and sum(forward_batch.extend_seq_lens_cpu) >= 160
+                and sum(forward_batch.extend_prefix_lens_cpu) > 160
             )
         else:
             # Triton: Use normal computation for prefill and use weight absorption for extend/decode
