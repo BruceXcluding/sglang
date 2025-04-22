@@ -326,7 +326,7 @@ class TritonAttnBackend(AttentionBackend):
                     forward_batch.extend_seq_lens + forward_batch.extend_prefix_lens
                 ).item()
                 kv_indptr += qo_indptr
-                if sum(forward_batch.extend_prefix_lens_cpu) <= 160:
+                if sum(forward_batch.extend_seq_lens_cpu) - sum(forward_batch.extend_prefix_lens_cpu) <= 160:
                     prefix_kv_indices = kv_indices
                     extend_kv_indices = forward_batch.out_cache_loc
                     prefix = torch.split(
@@ -583,7 +583,6 @@ class TritonAttnBackend(AttentionBackend):
             assert len(k.shape) == 3
             assert len(v.shape) == 3
             if layer.tp_k_head_num != 1:
-                print("MHA_PREFILL CLINKED")
                 if kv_indices.shape[0] == 0:
                     o = flash_attn_varlen_func(
                         q,
@@ -649,7 +648,6 @@ class TritonAttnBackend(AttentionBackend):
                     )
                     return o
             else:
-                print("MLA_PREFILL CLINKED")
                 token_num = forward_batch.extend_num_tokens
 
                 mla_prefill_fwd(
