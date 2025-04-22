@@ -319,6 +319,13 @@ class Fp8LinearMethod(LinearMethodBase):
                     weight_scale, requires_grad=False
                 )
                 layer.input_scale = None
+                
+                # TODO Shuffle GEMM
+                #if get_bool_env_var("CK_MOE"):
+                #    # Pre-shuffle weights
+                #    layer.weight.data = shuffle_weight(
+                #        layer.weight.contiguous(), (16, 16)
+                #    )
             else:
                 layer.weight = torch.nn.Parameter(
                     layer.weight.data, requires_grad=False

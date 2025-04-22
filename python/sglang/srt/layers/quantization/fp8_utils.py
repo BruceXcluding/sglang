@@ -27,7 +27,8 @@ use_vllm_cutlass_w8a8_fp8_kernel = get_bool_env_var("USE_VLLM_CUTLASS_W8A8_FP8_K
 
 _is_hip = is_hip()
 if _is_hip and get_bool_env_var("CK_MOE"):
-    from aiter import gemm_a8w8_blockscale_wpreshuffle_CK
+    from aiter import gemm_a8w8_blockscale_CK
+    #from aiter import gemm_a8w8_blockscale_wpreshuffle_CK
     from aiter.ops.shuffle import shuffle_weight
 
 _is_cuda = is_cuda()
@@ -124,8 +125,9 @@ def apply_w8a8_block_fp8_linear(
         q_input, x_scale = per_token_group_quant_fp8(
             input_2d, block_size[1], column_major_scales=False
         )
-        weight = shuffle_weight(weight, layout=(16, 16))
-        output = gemm_a8w8_blockscale_wpreshuffle_CK(q_input, weight, x_scale, weight_scale, dtype=input.dtype)
+        # TODO SHUFFLE GEMM
+        #output = gemm_a8w8_blockscale_wpreshuffle_CK(q_input, weight, x_scale, weight_scale, dtype=input.dtype)
+        output = gemm_a8w8_blockscale_CK(q_input, weight, x_scale, weight_scale, dtype=input.dtype)
     else:
         if _enable_jit_deepgemm:
             q_input, x_scale = per_token_group_quant_fp8(
