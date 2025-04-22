@@ -332,10 +332,12 @@ class TritonAttnBackend(AttentionBackend):
                     prefix = torch.split(
                         prefix_kv_indices, forward_batch.extend_prefix_lens_cpu
                     )
-                    extend = torch.split(extend_kv_indices, forward_batch.extend_seq_lens_cpu)
-                    kv_indices = torch.cat([x for el in zip(prefix, extend) for x in el]).to(
-                        torch.int
+                    extend = torch.split(
+                        extend_kv_indices, forward_batch.extend_seq_lens_cpu
                     )
+                    kv_indices = torch.cat(
+                        [x for el in zip(prefix, extend) for x in el]
+                    ).to(torch.int)
 
         self.forward_metadata = ForwardMetadata(
             attn_logits,
@@ -544,7 +546,7 @@ class TritonAttnBackend(AttentionBackend):
 
     def get_cuda_graph_seq_len_fill_value(self):
         return 1
-    
+
     def forward_extend(
         self,
         q: torch.Tensor,
@@ -579,7 +581,7 @@ class TritonAttnBackend(AttentionBackend):
             qk_nope_head_dim = k.shape[-1] - qk_rope_head_dim
             assert len(q.shape) == 3
             assert len(k.shape) == 3
-            assert len(v.shape) == 3 
+            assert len(v.shape) == 3
             if layer.tp_k_head_num != 1:
                 print("MHA_PREFILL CLINKED")
                 if kv_indices.shape[0] == 0:
@@ -612,7 +614,8 @@ class TritonAttnBackend(AttentionBackend):
                         [
                             k_prefix,
                             torch.broadcast_to(
-                                k_pe, (k_pe.shape[0], layer.tp_k_head_num, k_pe.shape[2])
+                                k_pe,
+                                (k_pe.shape[0], layer.tp_k_head_num, k_pe.shape[2]),
                             ),
                         ],
                         dim=-1,
@@ -621,11 +624,15 @@ class TritonAttnBackend(AttentionBackend):
                         forward_batch.extend_prefix_lens.shape
                         == forward_batch.extend_seq_lens.shape
                     )
-                    k_prefix = torch.split(k_prefix, forward_batch.extend_prefix_lens_cpu)
+                    k_prefix = torch.split(
+                        k_prefix, forward_batch.extend_prefix_lens_cpu
+                    )
                     k_extend = torch.split(k, forward_batch.extend_seq_lens_cpu)
                     assert len(k_prefix) == len(forward_batch.extend_prefix_lens_cpu)
                     k = torch.cat([x for el in zip(k_prefix, k_extend) for x in el])
-                    v_prefix = torch.split(v_prefix, forward_batch.extend_prefix_lens_cpu)
+                    v_prefix = torch.split(
+                        v_prefix, forward_batch.extend_prefix_lens_cpu
+                    )
                     v_extend = torch.split(v, forward_batch.extend_seq_lens_cpu)
                     v = torch.cat([x for el in zip(v_prefix, v_extend) for x in el])
 
