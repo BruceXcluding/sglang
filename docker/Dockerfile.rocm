@@ -9,25 +9,20 @@ USER root
 
 WORKDIR /sgl-workspace
 ARG BUILD_TYPE=all
-ARG SGL_REPO="https://github.com/sgl-project/sglang"
-ENV SGL_DEFAULT="main"
-ARG SGL_BRANCH=${SGL_DEFAULT}
+ARG SGL_REPO="https://github.com/BruceXcluding/sglang.git"
+ENV SGL_CUSTOMER="aiter_customer_v0.4.4"
+ARG SGL_BRANCH=${SGL_CUSTOMER}
 
 ARG TRITON_REPO="https://github.com/ROCm/triton.git"
 ARG TRITON_COMMIT="improve_fa_decode_3.0.0"
 
 
-ARG AITER_REPO="https://github.com/ROCm/aiter.git"
-ARG AITER_COMMIT="testx"
+ARG AITER_REPO="https://github.com/BruceXcluding/aiter.git"
+ARG AITER_COMMIT="aiter_customer"
 
 RUN git clone ${SGL_REPO} \
     && cd sglang \
-    && if [ "${SGL_BRANCH}" = ${SGL_DEFAULT} ]; then \
-         echo "Using ${SGL_DEFAULT}, default branch."; \
-       else \
-         echo "Using ${SGL_BRANCH} branch."; \
-         git checkout ${SGL_BRANCH}; \
-       fi \
+    && git checkout ${SGL_BRANCH} \
     && cd sgl-kernel \
     && python setup_rocm.py install \
     && cd .. \
@@ -56,8 +51,8 @@ RUN git clone ${TRITON_REPO} \
 RUN git clone ${AITER_REPO} \
     && cd aiter \
     && git checkout ${AITER_COMMIT} \
-    && git submodule update --init --recursive \
-    && PREBUILD_KERNELS=1 GPU_ARCHS=gfx942 python3 setup.py develop
+    && git submodule sync && git submodule update --init --recursive \
+    && GPU_ARCHS=gfx942 python3 setup.py develop
 
 # Copy config files to support MI300X in virtualized environments (MI300X_VF).  Symlinks will not be created in image build.
 RUN find /sgl-workspace/sglang/python/sglang/srt/layers/quantization/configs/ \
