@@ -29,7 +29,7 @@ from sglang.srt.utils import get_bool_env_var, is_hip
 
 _is_hip = is_hip()
 
-if _is_hip and get_bool_env_var("CK_MOE"):
+if _is_hip and get_bool_env_var("AITER_MOE"):
     from aiter.mla import mla_decode_fwd
 
 logger = logging.getLogger(__name__)
@@ -719,7 +719,7 @@ def decode_attention_fwd(
             sm_scale,
             logit_cap,
         )
-    elif _is_hip and get_bool_env_var("CK_MOE"):
+    elif _is_hip and get_bool_env_var("AITER_MOE"):
         # ROCM MLA
         mla_decode_fwd(
             q,

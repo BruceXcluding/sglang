@@ -971,7 +971,7 @@ def fused_experts_impl(
     if (
         not (use_fp8_w8a8 or use_int8_w8a8)
         or block_shape is not None
-        or (_is_hip and get_bool_env_var("CK_MOE"))
+        or (_is_hip and get_bool_env_var("AITER_MOE"))
     ):
         padded_size = 0
 

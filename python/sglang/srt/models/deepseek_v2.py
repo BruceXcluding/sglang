@@ -191,7 +191,7 @@ class DeepseekV2MoE(nn.Module):
         self.experts = MoEImpl(
             num_experts=config.n_routed_experts,
             num_shared_experts=(
-                config.n_shared_experts if get_bool_env_var("CK_MOE") and _is_hip else 0
+                config.n_shared_experts if get_bool_env_var("AITER_MOE") and _is_hip else 0
             ),
             top_k=config.num_experts_per_tok,
             hidden_size=config.hidden_size,
@@ -206,7 +206,7 @@ class DeepseekV2MoE(nn.Module):
             prefix=add_prefix("experts", prefix),
         )
 
-        if config.n_shared_experts is not None and not get_bool_env_var("CK_MOE"):
+        if config.n_shared_experts is not None and not get_bool_env_var("AITER_MOE"):
             intermediate_size = config.moe_intermediate_size * config.n_shared_experts
             # disable tp for shared experts when enable deepep moe
             if not global_server_args_dict["enable_deepep_moe"]:
@@ -264,7 +264,7 @@ class DeepseekV2MoE(nn.Module):
     def forward_normal(self, hidden_states: torch.Tensor) -> torch.Tensor:
         # router_logits: (num_tokens, n_experts)
         router_logits = self.gate(hidden_states)
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             final_hidden_states = self.experts(
                 hidden_states=hidden_states, router_logits=router_logits
             )
@@ -636,7 +636,7 @@ class DeepseekV2AttentionMLA(nn.Module):
             mscale = yarn_get_mscale(scaling_factor, float(mscale_all_dim))
             self.scaling = self.scaling * mscale * mscale
             # TODO aiter dsv rope
-            # if _is_hip and get_bool_env_var("CK_MOE"):
+            # if _is_hip and get_bool_env_var("AITER_MOE"):
             #    self.rotary_emb.forward = self.rotary_emb.forward_new
         else:
             self.rotary_emb.forward = self.rotary_emb.forward_native
@@ -682,7 +682,7 @@ class DeepseekV2AttentionMLA(nn.Module):
                 and not forward_batch.forward_mode.is_draft_extend()
                 and sum(forward_batch.extend_prefix_lens_cpu) == 0
             )
-        elif _is_hip and get_bool_env_var("CK_MOE"):
+        elif _is_hip and get_bool_env_var("AITER_MOE"):
             return (
                 forward_batch.forward_mode.is_extend()
                 and not forward_batch.forward_mode.is_target_verify()
@@ -1197,7 +1197,7 @@ class DeepseekV2Model(nn.Module):
             hidden_states = input_embeds
 
         residual = None
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             model_dim = hidden_states.shape[-1]
             num_tokens = hidden_states.view(-1, model_dim).shape[0]
             if not self.aiter_init:
@@ -1331,7 +1331,7 @@ class DeepseekV2ForCausalLM(nn.Module):
             num_experts=self.config.n_routed_experts,
             num_shared_experts=(
                 self.config.n_shared_experts
-                if get_bool_env_var("CK_MOE") and _is_hip
+                if get_bool_env_var("AITER_MOE") and _is_hip
                 else 0
             ),
         )
@@ -1364,7 +1364,7 @@ class DeepseekV2ForCausalLM(nn.Module):
                     continue
                 if (
                     _is_hip
-                    and get_bool_env_var("CK_MOE")
+                    and get_bool_env_var("AITER_MOE")
                     and "mlp.shared_experts" in name
                 ):
                     continue

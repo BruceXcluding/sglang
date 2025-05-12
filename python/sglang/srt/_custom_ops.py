@@ -69,7 +69,7 @@ else:
     if is_hip():
         # ROCM custom allreduce
 
-        if get_bool_env_var("CK_MOE"):
+        if get_bool_env_var("AITER_MOE"):
             import aiter.ops.custom_all_reduce as aiter_custom_ar
 
         def init_custom_ar(
@@ -82,7 +82,7 @@ else:
         ) -> int:
             init_func = (
                 aiter_custom_ar.init_custom_ar
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.init_custom_ar
             )
             return init_func(meta, rank_data, handles, offsets, rank, full_nvlink)
@@ -90,7 +90,7 @@ else:
         def all_reduce_reg(fa: int, inp: torch.Tensor, out: torch.Tensor) -> None:
             arr_func = (
                 aiter_custom_ar.all_reduce_reg
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.all_reduce_reg
             )
             arr_func(fa, inp, out)
@@ -100,7 +100,7 @@ else:
         ) -> None:
             aru_func = (
                 aiter_custom_ar.all_reduce_unreg
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.all_reduce_unreg
             )
             aru_func(fa, inp, reg_buffer, out)
@@ -108,14 +108,14 @@ else:
         def dispose(fa: int) -> None:
             (
                 aiter_custom_ar.dispose(fa)
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.dispose(fa)
             )
 
         def meta_size() -> int:
             ms_func = (
                 aiter_custom_ar.meta_size
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.meta_size
             )
             return ms_func()
@@ -125,7 +125,7 @@ else:
         ) -> None:
             rb_func = (
                 aiter_custom_ar.register_buffer
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.register_buffer
             )
             return rb_func(fa, t, handles, offsets)
@@ -133,7 +133,7 @@ else:
         def get_graph_buffer_ipc_meta(fa: int) -> Tuple[torch.Tensor, List[int]]:
             ggbim_func = (
                 aiter_custom_ar.get_graph_buffer_ipc_meta
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.get_graph_buffer_ipc_meta
             )
             return ggbim_func(fa)
@@ -143,7 +143,7 @@ else:
         ) -> None:
             rgb_func = (
                 aiter_custom_ar.register_graph_buffers
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.register_graph_buffers
             )
             rgb_func(fa, handles, offsets)
@@ -151,7 +151,7 @@ else:
         def allocate_meta_buffer(size: int) -> torch.Tensor:
             amb_func = (
                 aiter_custom_ar.allocate_meta_buffer
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.allocate_meta_buffer
             )
             return amb_func(size)
@@ -159,7 +159,7 @@ else:
         def get_meta_buffer_ipc_handle(inp: torch.Tensor) -> torch.Tensor:
             gmbih_func = (
                 aiter_custom_ar.get_meta_buffer_ipc_handle
-                if get_bool_env_var("CK_MOE")
+                if get_bool_env_var("AITER_MOE")
                 else sgl_kernel.allreduce.get_meta_buffer_ipc_handle
             )
             return gmbih_func(inp)

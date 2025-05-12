@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 _is_hip = is_hip()
 
-if _is_hip and get_bool_env_var("CK_MOE"):
+if _is_hip and get_bool_env_var("AITER_MOE"):
     from aiter import flash_attn_varlen_func
     from aiter.mla import mla_prefill_fwd
 
@@ -321,7 +321,7 @@ class TritonAttnBackend(AttentionBackend):
             kv_last_page_len = torch.ones(bs, dtype=torch.int)
             max_extend_len = torch.max(forward_batch.extend_seq_lens).item()
             num_kv_splits = None
-            if _is_hip and get_bool_env_var("CK_MOE"):
+            if _is_hip and get_bool_env_var("AITER_MOE"):
                 max_prefix_extend_len = torch.max(
                     forward_batch.extend_seq_lens + forward_batch.extend_prefix_lens
                 ).item()
@@ -567,7 +567,7 @@ class TritonAttnBackend(AttentionBackend):
                 layer, forward_batch.out_cache_loc, k, v
             )
 
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             max_extend_len = self.forward_metadata.max_extend_len
             max_prefix_extend_len = self.forward_metadata.max_prefix_extend_len
             kv_indptr = self.forward_metadata.kv_indptr

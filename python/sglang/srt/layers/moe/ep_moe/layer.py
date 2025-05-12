@@ -196,7 +196,7 @@ class EPMoE(torch.nn.Module):
             self.fp8_dtype = torch.float8_e4m3fn
             self.activation_scheme = quant_config.activation_scheme
 
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             self.routed_scaling_factor = routed_scaling_factor
             self.expert_mask = torch.zeros(
                 (self.num_experts + self.num_shared_experts + 1),
@@ -221,7 +221,7 @@ class EPMoE(torch.nn.Module):
     def forward(self, hidden_states: torch.Tensor, router_logits: torch.Tensor):
         assert self.quant_method is not None
 
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             # Matrix multiply.
             final_hidden_states = self.quant_method.apply(
                 layer=self,
@@ -855,7 +855,7 @@ class Fp8EPMoEMethod(Fp8MoEMethod):
                 )
                 layer.w2_input_scale = None
 
-                if get_bool_env_var("CK_MOE"):
+                if get_bool_env_var("AITER_MOE"):
                     # Pre-shuffle weights
                     layer.w13_weight.data = shuffle_weight(
                         layer.w13_weight.contiguous(), (16, 16)
@@ -877,7 +877,7 @@ class Fp8EPMoEMethod(Fp8MoEMethod):
         num_expert_group: Optional[int] = None,
         custom_routing_function: Optional[Callable] = None,
     ) -> torch.Tensor:
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             token = x.shape[0]
             biased_grouped_topk(
                 router_logits,

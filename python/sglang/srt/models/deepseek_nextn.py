@@ -107,7 +107,7 @@ class DeepseekModelNextN(nn.Module):
         else:
             hidden_states = input_embeds
 
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             model_dim = hidden_states.shape[-1]
             num_tokens = hidden_states.view(-1, model_dim).shape[0]
             if not self.aiter_init:
@@ -262,7 +262,7 @@ class DeepseekV3ForCausalLMNextN(DeepseekV3ForCausalLM):
             num_experts=self.config.n_routed_experts,
             num_shared_experts=(
                 self.config.n_shared_experts
-                if get_bool_env_var("CK_MOE") and _is_hip
+                if get_bool_env_var("AITER_MOE") and _is_hip
                 else 0
             ),
         )
@@ -311,7 +311,7 @@ class DeepseekV3ForCausalLMNextN(DeepseekV3ForCausalLM):
                     continue
                 if (
                     _is_hip
-                    and get_bool_env_var("CK_MOE")
+                    and get_bool_env_var("AITER_MOE")
                     and "mlp.shared_experts" in name
                 ):
                     continue

@@ -102,7 +102,7 @@ class UnquantizedFusedMoEMethod(FusedMoEMethodBase, CustomOp):
         set_weight_attrs(w2_weight, extra_weight_attrs)
 
     def process_weights_after_loading(self, layer: torch.nn.Module) -> None:
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             layer.w13_weight = torch.nn.Parameter(
                 permute_weight(layer.w13_weight.data),
                 requires_grad=False,
@@ -175,7 +175,7 @@ class UnquantizedFusedMoEMethod(FusedMoEMethodBase, CustomOp):
             correction_bias=correction_bias,
         )
 
-        if _is_hip and get_bool_env_var("CK_MOE"):
+        if _is_hip and get_bool_env_var("AITER_MOE"):
             assert not no_combine, "unsupported"
             return ck_moe(
                 x,
